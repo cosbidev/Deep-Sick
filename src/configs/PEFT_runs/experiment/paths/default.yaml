@@ -1,0 +1,17 @@
+# @package _global_
+hydra:
+  job:
+    name: ${experiment_name}${shot_exp_name}${tuning_name}
+    chdir: False # Default False to be able to define the entire path where to save the outputs, if True it concatenates os.chdir with the run/dir or sweep/dir/subdir.
+    config:
+      override_dirname:
+        item_sep: '/'
+        # kv_sep: '-'
+        # exclude_keys:
+  #job_logging:
+    #disable_existing_loggers: False
+  run:
+    dir: ${output_path}/${hydra.job.name}/${db.dataset_name}/${exp_id_str}/${backbone}/${fold_validation}/ # ${hydra.job.override_dirname} ${hydra.job.name}
+  sweep:
+    dir: ${output_path}/${hydra.job.name}/${db.dataset_name}/${backbone}/${fold_validation}/
+    subdir: ${hydra.job.override_dirname}  # ${hydra.job.num}

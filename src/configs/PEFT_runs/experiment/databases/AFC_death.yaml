@@ -1,0 +1,46 @@
+dataset_name: AFC_death
+batch_size: 128
+img_size: 224
+# path of img directory
+
+dirs:
+  img_dir: data/AFC/imgs
+  clinical_dir: data/AFC/clinical
+  box_dir: data/AFC/bbox
+  mask_dir: data/AFC/masks
+  fold_dir: data/AFC/fold
+
+imaging:
+  img_extension: .jpeg
+
+  normalization: minmax # minmax, zscore, None
+  bbox:
+    box_file: box_data_AFC.xlsx
+
+
+
+clinical:
+  filename: clinical_data_AFC.csv
+  # Imputer options
+  imputer: True
+  imputation_strategy: mean  # mean, median, most_frequent, constant, None. If constant, fill_value must be specified
+  fill_value: None # fill_value for constant imputation
+  # Scaler options
+  scaler: True
+  scaler_strategy: standard # standard, minmax, maxabs, robust, quantile
+
+
+
+val_metric_type: binary_unbalanced
+
+override_output_dir: True
+
+best_model_by_signal: 'loss'
+
+parameters:
+  task: mortality
+  classes: # name of classes
+    - ALIVE
+    - DEATH
+  label_column: label
+  id_column: img

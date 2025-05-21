@@ -1,0 +1,22 @@
+model_list:
+  - AdaBoostClassifier
+  - BernoulliNB
+  - DecisionTreeClassifier
+  - ExtraTreesClassifier
+  - GaussianNB
+  - GradientBoostingClassifier
+  - HistGradientBoostingClassifier
+  - KNeighborsClassifier
+  - LabelPropagation
+  - LabelSpreading
+  - LinearDiscriminantAnalysis
+  - LinearSVC
+  - LogisticRegression
+  - MLPClassifier
+  - MultinomialNB
+  - NearestCentroid
+  - RandomForestClassifier
+  - RidgeClassifier
+  - SGDClassifier
+  - SVC
+  - XGBClassifier

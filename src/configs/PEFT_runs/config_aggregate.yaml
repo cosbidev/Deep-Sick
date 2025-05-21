@@ -1,0 +1,8 @@
+defaults:
+  - _self_
+  - experiment/databases@db: AFC
+  - experiment/paths/system@: alvis_2 # local # alvis
+  - experiment/validation_strategy@: hold_out
+
+
+

@@ -1,0 +1,27 @@
+batch_size: ${db.batch_size}
+
+# Learning rates for model
+scheduler:
+  patience: 25
+
+init_learning_rate: 1e-3
+
+end_learning_rate: 1e-8
+
+learning_rates:  ${learning_rates}
+
+n_last_blocks: ${n_last_blocks}
+
+avgpools: ${avgpools}
+
+verbose: ${verbose}
+
+epochs_print_itr: 1
+
+verbose_batch: 0 # 1 # ${verbose}
+
+# Device
+device: cuda
+
+
+num_workers: 4

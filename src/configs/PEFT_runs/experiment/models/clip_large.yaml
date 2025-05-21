@@ -1,0 +1,21 @@
+backbone: clip-large
+
+n_last_blocks: [1, 4]
+
+avgpools: [True, False]
+
+
+
+modules_target:
+  - k_proj
+  - q_proj
+  - v_proj
+
+modules_target_same_shape:
+  - k_proj
+  - q_proj
+  - v_proj
+
+feedforward_modules:
+  - fc1
+  - fc2

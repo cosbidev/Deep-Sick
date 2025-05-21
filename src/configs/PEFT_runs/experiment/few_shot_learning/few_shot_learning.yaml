@@ -1,0 +1,7 @@
+shots: [2, 4, 8, 16, 32]
+
+num_samples: null
+
+shot_exp_name: '_few_shot_learning'
+
+centers: False

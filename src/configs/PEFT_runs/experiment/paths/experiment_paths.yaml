@@ -1,0 +1,7 @@
+
+experiment: ${hydra:runtime.output_dir}
+results: ${hydra:runtime.output_dir}
+
+train_dataset: ${data_base_path}/${db.dataset_name}
+
+

@@ -1,0 +1,8 @@
+peft: null
+
+fine_tune: True
+
+backbone_learning_rate: 1e-5
+
+tuning_name: '_FFT'
+

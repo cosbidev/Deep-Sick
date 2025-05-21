@@ -1,0 +1,21 @@
+# @package _global_
+
+experiment_name: linear_probing_test_all
+
+seed: 42
+verbose: 1
+
+defaults:
+  - _self_
+  - paths@: default
+  - paths: experiment_paths
+  - model_types_params: dl_params
+  - few_shot_learning@: center_few_shot_learning
+  - feature_tuning@: VeRA
+  - hyperparameters@: none
+rank: 16
+no_best_hyperparameters: True
+learning_rates: [1e-2, 1e-3, 1e-4]
+
+
+

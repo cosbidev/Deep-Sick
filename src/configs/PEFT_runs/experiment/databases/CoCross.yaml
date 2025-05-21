@@ -1,0 +1,45 @@
+dataset_name: CoCross
+batch_size: 64
+img_size: 224
+# path of img directory
+
+dirs:
+  img_dir: data/CoCross/imgs
+  fold_dir: data/processed/CoCross
+
+imaging:
+  img_extension: .jpeg
+  normalization: minmax # minmax, zscore, None
+
+
+clinical:
+  # Imputer options
+  imputer: True
+  imputation_strategy: mean  # mean, median, most_frequent, constant, None. If constant, fill_value must be specified
+
+
+  # Scaler options
+  scaler: True
+  scaler_strategy: standard # standard, minmax, maxabs, robust, quantile
+  cont:
+    method: minmax # zscore, minmax, None
+  cat:
+    method: onehot # onehot, catgorical
+
+val_metric_type: binary_unbalanced
+
+
+
+
+override_output_dir: False
+
+best_model_by_signal: 'loss'
+
+parameters:
+  task: mortality
+  classes: # name of classes
+    - Death
+    - Alive
+  label_column: ICU Outcome
+  id_column: ID
+

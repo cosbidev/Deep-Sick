@@ -1,0 +1,1 @@
+wget -r -N -c -np https://physionet.org/files/radgraph/1.0.0/

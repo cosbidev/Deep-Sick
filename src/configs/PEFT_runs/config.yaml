@@ -1,0 +1,37 @@
+defaults:
+  - _self_
+  - experiment/models@: resnet_18
+  - experiment: linear_probing_none_test_all
+  - experiment/databases@db: AFC
+  - experiment/paths/system@: local # local # alvis
+  - experiment/validation_strategy@: hold_out
+  - experiment/run@: default_run_2
+
+
+epoch_length: null
+
+# Strings Datasets
+train_dataset_str: ${db.dataset_name}:split=TRAIN:root=data/processed/${db.dataset_name}
+val_dataset_str: ${db.dataset_name}:split=VAL:root=data/processed/${db.dataset_name}
+test_dataset_str: ${db.dataset_name}:split=TEST:root=data/processed/${db.dataset_name}
+
+load_features: False
+
+config_file: src/configs/PEFT_runs/experiment/eval/vitb14_pretrain.yaml
+
+pretrained_weights: null
+
+no_resume: True
+
+# Db parameters
+image_size: ${db.img_size}
+
+batch_size: ${db.batch_size}
+# Override the experiments in the folder
+override: False
+
+
+cached_prop: 0.3
+
+
+

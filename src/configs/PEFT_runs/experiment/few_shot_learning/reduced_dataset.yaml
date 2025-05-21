@@ -1,0 +1,7 @@
+shots: null
+
+num_samples: 256
+
+shot_exp_name: '_reduced_dataset'
+
+centers: False
