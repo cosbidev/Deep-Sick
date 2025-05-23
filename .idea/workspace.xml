@@ -4,11 +4,51 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="DATASET TRACKING Update, all the progress about the dataset creation and replication." />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Add of src and other download files from alvis">
+      <change afterPath="$PROJECT_DIR$/src/download/mimic-cxr/Download_Data.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/mimic-cxr/parallel.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/mimic-diff-vqa.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/data/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/data/padchest_preprocessing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/COVIDx-CXR4" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/COVIDx-CXR4" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/COVIDx-CXR4.bash" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/COVIDx-CXR4.bash" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/CXR-LT.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/CXR-LT.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/MIMIC-CXR-JPG" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/MIMIC-CXR-JPG" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/MIMIC-CXR-JPG.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/MIMIC-CXR-JPG.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/NLM-TB.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/NLM-TB.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/Object-CXR.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/Object-CXR.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/OpenI.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/OpenI.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/Rad-ReStruct.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/Rad-ReStruct.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_chest_x_ray_data.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_chest_x_ray_data.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_hf_dataset" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_hf_dataset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_hf_dataset.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_hf_dataset.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_hf_dataset•" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_hf_dataset•" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/medvqa-2019.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/medvqa-2019.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/ms-cxr-t.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/ms-cxr-t.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/ms-cxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/ms-cxr.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/pmc-vqa.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/pmc-vqa.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/radNLi.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/radNLi.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/radgraph.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/radgraph.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/vindr-cxr" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/mimic-cxr/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/vindr-cxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/vindr-cxr.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/download/vindr-pcxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/vindr-pcxr.sh" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/CheXagent" />
@@ -27,18 +67,28 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Python.parallel.executor": "Debug",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "false",
     "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "ssh.settings",
+    "settings.editor.selected.configurable": "configurable.group.project",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src" />
+      <recent name="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />
       <recent name="$PROJECT_DIR$/data" />
     </key>
   </component>
@@ -59,6 +109,9 @@
       <option name="presentableId" value="Default" />
       <updated>1747320916802</updated>
       <workItem from="1747320918648" duration="191000" />
+      <workItem from="1747857664765" duration="18417000" />
+      <workItem from="1748008065327" duration="38000" />
+      <workItem from="1748012630600" duration="925000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -68,7 +121,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747840164255</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Add of src and other download files from alvis">
+      <option name="closed" value="true" />
+      <created>1747840651726</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1747840651726</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -87,6 +148,21 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="DATASET TRACKING Update, all the progress about the dataset creation and replication." />
-    <option name="LAST_COMMIT_MESSAGE" value="DATASET TRACKING Update, all the progress about the dataset creation and replication." />
+    <MESSAGE value="Add of src and other download files from alvis" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add of src and other download files from alvis" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/download/mimic-cxr/parallel.py</url>
+          <line>15</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Deep_Sick$parallel.coverage" NAME="parallel Coverage Results" MODIFIED="1747920036572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />
   </component>
 </project>

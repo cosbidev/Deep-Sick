@@ -15,7 +15,4 @@
 #SBATCH --mail-user=ruffin02@outlook.it
 cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick
 
-wget -r -N -c -np  https://physionet.org/files/vindr-cxr/1.0.0/
-
-
-
+wget -r -N -c -np  https://physionet.org/files/medical-diff-vqa/1.0.1/

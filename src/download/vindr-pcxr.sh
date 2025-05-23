@@ -4,9 +4,9 @@
 #SBATCH -C NOGPU
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=6:00:00
+#SBATCH --time=12:00:00
 #SBATCH --gres=none
-#SBATCH -J "Download CXR-LT"  # multi node, multi GPU
+#SBATCH -J "Download VINDR-PCXR"  # multi node, multi GPU
 # Output files
 #SBATCH --error=LINEAR_job_%J.err
 #SBATCH --output=LINEAR_out_%J.out
