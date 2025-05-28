@@ -4,39 +4,26 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Add of src and other download files from alvis">
-      <change afterPath="$PROJECT_DIR$/src/download/mimic-cxr/Download_Data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/download/mimic-cxr/parallel.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/download/mimic-diff-vqa.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/data/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/data/padchest_preprocessing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Reorganization download, src and other parts.">
+      <change afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/Gemma3.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/MedGemma3.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/mappings.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/process_reports.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/requirements.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/padchest/text_errors.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/COVIDx-CXR4" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/COVIDx-CXR4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/COVIDx-CXR4.bash" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/COVIDx-CXR4.bash" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/CXR-LT.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/CXR-LT.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/MIMIC-CXR-JPG" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/MIMIC-CXR-JPG" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/MIMIC-CXR-JPG.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/MIMIC-CXR-JPG.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/NLM-TB.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/NLM-TB.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/Object-CXR.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/Object-CXR.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/OpenI.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/OpenI.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/Rad-ReStruct.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/Rad-ReStruct.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_chest_x_ray_data.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_chest_x_ray_data.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_hf_dataset" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_hf_dataset" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_hf_dataset.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_hf_dataset.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/download_hf_dataset•" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/download_hf_dataset•" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/medvqa-2019.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/medvqa-2019.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/ms-cxr-t.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/ms-cxr-t.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/ms-cxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/ms-cxr.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/pmc-vqa.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/pmc-vqa.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/radNLi.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/radNLi.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/radgraph.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/radgraph.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/vindr-cxr" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/mimic-cxr/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/vindr-cxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/vindr-cxr.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/download/vindr-pcxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/vindr-pcxr.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/base_processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/base_processor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/axis_1_image_perception/run_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/axis_1_image_perception/run_generation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/random.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/random.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/src/llava.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/src/llava.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/download/mimic-cxr/Download_Data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/mimic-cxr/check_files_missing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,7 +38,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/CheXagent" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="ProjectColorInfo">{
@@ -68,6 +55,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Python.padchest_preprocessing.executor": "Run",
     "Python.parallel.executor": "Debug",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
@@ -81,26 +69,63 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "configurable.group.project",
+    "settings.editor.selected.configurable": "com.intellij.pycharm.community.ide.impl.configuration.PythonContentEntriesConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer" />
+      <recent name="$PROJECT_DIR$/src/download" />
+      <recent name="$PROJECT_DIR$/src/preprocess/padchest" />
       <recent name="$PROJECT_DIR$/src" />
       <recent name="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />
-      <recent name="$PROJECT_DIR$/data" />
     </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="padchest_preprocessing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Deep-Sick" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/preprocess/padchest" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.padchest_preprocessing" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.17890.14" />
-        <option value="bundled-python-sdk-5b207ade9991-7e9c3bbb6e34-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.17890.14" />
+        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.19416.19" />
+        <option value="bundled-python-sdk-337b0a7a993a-2767605e8bc2-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.19416.19" />
       </set>
     </attachedChunks>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SshConsoleOptionsProvider">
+    <option name="myEncoding" value="UTF-8" />
+    <option name="myConnectionType" value="SSH_CONFIG" />
+    <option name="myConnectionId" value="ruffini@alvis2.c3se.chalmers.se:22 password" />
+  </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="" />
@@ -111,7 +136,16 @@
       <workItem from="1747320918648" duration="191000" />
       <workItem from="1747857664765" duration="18417000" />
       <workItem from="1748008065327" duration="38000" />
-      <workItem from="1748012630600" duration="925000" />
+      <workItem from="1748012630600" duration="1303000" />
+      <workItem from="1748013950817" duration="4992000" />
+      <workItem from="1748193686959" duration="165000" />
+      <workItem from="1748194184566" duration="13599000" />
+      <workItem from="1748209839084" duration="10000" />
+      <workItem from="1748212045697" duration="3574000" />
+      <workItem from="1748245399462" duration="19976000" />
+      <workItem from="1748331055466" duration="16314000" />
+      <workItem from="1748361536798" duration="2374000" />
+      <workItem from="1748439326180" duration="47000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -129,7 +163,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747840651726</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Reorganization download, src and other parts.">
+      <option name="closed" value="true" />
+      <created>1748013655810</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1748013655810</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -149,7 +191,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="DATASET TRACKING Update, all the progress about the dataset creation and replication." />
     <MESSAGE value="Add of src and other download files from alvis" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add of src and other download files from alvis" />
+    <MESSAGE value="Reorganization download, src and other parts." />
+    <option name="LAST_COMMIT_MESSAGE" value="Reorganization download, src and other parts." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -159,10 +202,21 @@
           <line>15</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py</url>
+          <line>101</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py</url>
+          <line>7</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Deep_Sick$parallel.coverage" NAME="parallel Coverage Results" MODIFIED="1747920036572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />
+    <SUITE FILE_PATH="coverage/Deep_Sick$padchest_preprocessing.coverage" NAME="padchest_preprocessing Coverage Results" MODIFIED="1748213263438" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/padchest" />
   </component>
 </project>
