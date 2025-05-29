@@ -4,26 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Reorganization download, src and other parts.">
-      <change afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/Gemma3.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/MedGemma3.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/mappings.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/process_reports.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/requirements.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/padchest/text_errors.txt" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Preprocessing, download and other stuff">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/base_processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/base_processor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/axis_1_image_perception/run_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/axis_1_image_perception/run_generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/random.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/random.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/src/llava.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/models/src/llava.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/download/mimic-cxr/Download_Data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/mimic-cxr/check_files_missing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,27 +36,27 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
-    "Python.padchest_preprocessing.executor": "Run",
-    "Python.parallel.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
-    "WebServerToolWindowPanel.toolwindow.show.date": "false",
-    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
-    "WebServerToolWindowPanel.toolwindow.show.size": "false",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.intellij.pycharm.community.ide.impl.configuration.PythonContentEntriesConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
+    &quot;Python.padchest_preprocessing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.parallel.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.intellij.pycharm.community.ide.impl.configuration.PythonContentEntriesConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer" />
@@ -145,7 +129,7 @@
       <workItem from="1748245399462" duration="19976000" />
       <workItem from="1748331055466" duration="16314000" />
       <workItem from="1748361536798" duration="2374000" />
-      <workItem from="1748439326180" duration="47000" />
+      <workItem from="1748439326180" duration="6957000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -171,7 +155,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748013655810</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Preprocessing, download and other stuff">
+      <option name="closed" value="true" />
+      <created>1748439420772</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1748439420772</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -192,7 +184,8 @@
     <MESSAGE value="DATASET TRACKING Update, all the progress about the dataset creation and replication." />
     <MESSAGE value="Add of src and other download files from alvis" />
     <MESSAGE value="Reorganization download, src and other parts." />
-    <option name="LAST_COMMIT_MESSAGE" value="Reorganization download, src and other parts." />
+    <MESSAGE value="Preprocessing, download and other stuff" />
+    <option name="LAST_COMMIT_MESSAGE" value="Preprocessing, download and other stuff" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -211,6 +204,11 @@
           <url>file://$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py</url>
           <line>7</line>
           <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py</url>
+          <line>28</line>
+          <option name="timeStamp" value="5" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -3,17 +3,12 @@ import os
 import sys
 import spacy
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from scispacy.linking import EntityLinker
-from nltk.tokenize import sent_tokenize
-#from .mappings import concept_region_map
-#from .utils import clean_text
+from utils import walk_reports_mimic
 
 
 
-mimic_dir_reports = "./Deep-Sick/data/mimic-cxr/mimic-cxr-reports/files"
 
-
-
+mimic_dir_reports = "/mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick/data/mimic-cxr/mimic-cxr-reports/files"
 #nlp('There is no focal consolidation, pleural effusion or pneumothorax.  Bilateral nodular opacities that most likely represent nipple shadows. The cardiomediastinal silhouette is normal.  Clips project over the left lung, potentially within the breast. The imaged upper abdomen is unremarkable. Chronic deformity of the posterior left sixth and seventh ribs are noted.')
 
 parser = argparse.ArgumentParser(description="Open the MIMIC-CXR reports.")
@@ -24,8 +19,11 @@ if __name__ == "__main__":
     # Open all the reports in the MIMIC-CXR dataset
     args = parser.parse_args()
     mimic_dir_reports = args.text_reports_dir
-    os.scandir(mimic_dir_reports)
 
+
+    for pid, path, text in walk_reports_mimic(mimic_dir_reports):
+        
+        print(f"Patient ID: {pid}\nPath: {path}\nReport Sample: {text}")
 
 
     # Load NLP pipeline and linker once

@@ -101,8 +101,6 @@ def preprocess_padchest(args):
             # Save the image
             image_name = os.path.basename(img_path)
             # Save the image to png
-
-
             image.save(os.path.join(path_to_images, image_name), format='png')
 
         except OSError as e:
@@ -137,11 +135,10 @@ def main():
 
     # Get all the zipped directories
 
-    """skip = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
+    skip = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
             '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23',
             '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34',
-            '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46']"""
-    skip = ['']
+            '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46']
     dirs_unzipped = [entry for entry in os.scandir(raw_data_path) if entry.path.endswith('.zip') and not entry.name.startswith('.')]
 
     # Filter out directories that start with '0' to '12'
@@ -171,13 +168,8 @@ def main():
         chunk_size = max(1, len(image_list_to_process) // num_processes)
         image_list_chunks = [image_list_to_process[i:i + chunk_size] for i in range(0, len(image_list_to_process), chunk_size)]
 
-        path_to_images =  os.path.join(path_to_images, dir.name.split('.zip')[0])
-        os.makedirs(path_to_images, exist_ok=True)
         # Wrap the chunks with args for the pool
         worker_args = [(chunk, args.dimension, args.output_path, path_to_images) for chunk in image_list_chunks]
-
-        os.makedirs(path_to_images, exist_ok=True)
-
 
         # Multiprocessing
         with Pool(processes=num_processes) as pool:
