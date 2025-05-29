@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Preprocessing, download and other stuff">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Report Radiology mimic preprocessing">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/radiology-report-extraction/extract_mimic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/radiology-report-extraction/extract_mimic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,7 +21,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/src/preprocess/mimic-cxr/radiology-report-extraction" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="ProjectColorInfo">{
@@ -130,6 +129,7 @@
       <workItem from="1748331055466" duration="16314000" />
       <workItem from="1748361536798" duration="2374000" />
       <workItem from="1748439326180" duration="6957000" />
+      <workItem from="1748509289251" duration="693000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -163,7 +163,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748439420772</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Report Radiology mimic preprocessing">
+      <option name="closed" value="true" />
+      <created>1748509535775</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1748509535775</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -185,7 +193,8 @@
     <MESSAGE value="Add of src and other download files from alvis" />
     <MESSAGE value="Reorganization download, src and other parts." />
     <MESSAGE value="Preprocessing, download and other stuff" />
-    <option name="LAST_COMMIT_MESSAGE" value="Preprocessing, download and other stuff" />
+    <MESSAGE value="Report Radiology mimic preprocessing" />
+    <option name="LAST_COMMIT_MESSAGE" value="Report Radiology mimic preprocessing" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -202,12 +211,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py</url>
-          <line>7</line>
+          <line>4</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py</url>
-          <line>28</line>
+          <line>22</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
       </breakpoints>
