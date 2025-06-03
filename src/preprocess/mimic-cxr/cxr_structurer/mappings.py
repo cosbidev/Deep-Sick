@@ -1,1 +1,0 @@
-# TODO MAPPINGS BETWEEN THE Xbench and the MIMIC-CXR dataset NER concepts identified by the scispacy linker

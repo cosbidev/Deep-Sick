@@ -1,7 +1,0 @@
-scispacy
-https://huggingface.co/allenai/scispacy_models/resolve/main/en_core_sci_sm-0.5.1.tar.gz
-https://huggingface.co/allenai/scispacy_models/resolve/main/umls-2020AB.tar.gz
-nltk
-
-
-pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_sm-0.5.4.tar.gz

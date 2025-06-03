@@ -11,12 +11,7 @@
 # Mail me
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
-
-# Activate venv
-
-
-
-cd /mimer/NOBACKUP/groups/naiss2023-6-336/ruffini/FM_PEFT_prognosis
+cd  /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick
 
 
 module purge
@@ -27,31 +22,14 @@ module load h5py/3.9.0-foss-2023a
 
 
 # Activate the enviroment
-source PEFT_env/bin/activate
+source Deep_Sick_env/bin/activate
 
 
-cd /mimer/NOBACKUP/groups/naiss2023-6-336/ruffini/FM_PEFT_prognosis || exit
 
-model_name=$model_name
-database=$database
-paths=$paths
-validation_strategy=$validation_strategy
-experiment=$experiment
-echo "model_name: $model_name";
-echo "database: $database";
-echo "paths: $paths";
-echo "validation_strategy: $validation_strategy";
-
-
-#!/usr/bin/bash
-# RUN YOUR PROGRAM
 WANDB__SERVICE_WAIT=300 python src/eval/classification/linear.py experiment/databases@db="$database" experiment/paths/system@_global_=alvis experiment/validation_strategy@_global_="$validation_strategy" experiment="$experiment" experiment/models@_global_="$model_name"
 export WANDB_MODE=offline
 
 cd /mimer/NOBACKUP/groups/naiss2023-6-336/ruffini/FM_PEFT_prognosis || exit
 # REMOVE ALL files:
-
 deactivate
-
-
 

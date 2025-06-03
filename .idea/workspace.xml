@@ -4,9 +4,31 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Report Radiology mimic preprocessing">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Preprocessing Code for mimic updated">
+      <change afterPath="$PROJECT_DIR$/src/download/medmax/downloadMedmax.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/chestxray14/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/chexbench/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/chexbench/modifyBenchData.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/chexpert/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessImagesChexpert.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessReports.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/PreprocessMimicImages.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/axis_3_text_generation/run_findings_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/evaluation_chexbench/axis_3_text_generation/run_findings_generation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/AGGREGATE_RESULTS.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/create_corr.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/debug_linear.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/extractor.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/linear.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/BASH_template_DS.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/medmax/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/mappings.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/requirements.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/utils.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocess/mimic-cxr/radiology-report-extraction/extract_mimic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/mimic-cxr/radiology-report-extraction/extract_mimic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/padchest/preprocessingImagesPadchest.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,7 +43,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/src/preprocess/mimic-cxr/radiology-report-extraction" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/CheXagent" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="ProjectColorInfo">{
@@ -35,38 +57,92 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
-    &quot;Python.padchest_preprocessing.executor&quot;: &quot;Run&quot;,
-    &quot;Python.parallel.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.intellij.pycharm.community.ide.impl.configuration.PythonContentEntriesConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Python.downloadMedmax.executor": "Debug",
+    "Python.padchest_preprocessing.executor": "Run",
+    "Python.parallel.executor": "Debug",
+    "Python.pipeline.executor": "Debug",
+    "Python.splitFileCreation.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "false",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/data/padchest" />
+      <recent name="$PROJECT_DIR$/data/chexpert-public" />
+      <recent name="$PROJECT_DIR$/data" />
       <recent name="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer" />
       <recent name="$PROJECT_DIR$/src/download" />
-      <recent name="$PROJECT_DIR$/src/preprocess/padchest" />
-      <recent name="$PROJECT_DIR$/src" />
-      <recent name="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />
     </key>
   </component>
-  <component name="RunManager">
-    <configuration name="padchest_preprocessing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value="d" />
+    </option>
+  </component>
+  <component name="RunManager" selected="Python.splitFileCreation">
+    <configuration name="downloadMedmax" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="Deep-Sick" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/download/medmax/downloadMedmax.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pipeline" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Deep-Sick" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="preprocessingImagesPadchest" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Deep-Sick" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -80,7 +156,30 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/preprocess/padchest/preprocessingImagesPadchest.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="splitFileCreation" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="Deep-Sick" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/preprocess/chestxray14/splitFileCreation.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -91,7 +190,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.padchest_preprocessing" />
+        <item itemvalue="Python.pipeline" />
+        <item itemvalue="Python.preprocessingImagesPadchest" />
       </list>
     </recent_temporary>
   </component>
@@ -129,7 +229,13 @@
       <workItem from="1748331055466" duration="16314000" />
       <workItem from="1748361536798" duration="2374000" />
       <workItem from="1748439326180" duration="6957000" />
-      <workItem from="1748509289251" duration="693000" />
+      <workItem from="1748509289251" duration="7307000" />
+      <workItem from="1748521489229" duration="11730000" />
+      <workItem from="1748589914618" duration="18825000" />
+      <workItem from="1748685716696" duration="30000" />
+      <workItem from="1748685753150" duration="2897000" />
+      <workItem from="1748701063692" duration="3917000" />
+      <workItem from="1748938029560" duration="9512000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -171,7 +277,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748509535775</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Preprocessing Code for mimic">
+      <option name="closed" value="true" />
+      <created>1748510159553</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1748510159553</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -194,7 +308,8 @@
     <MESSAGE value="Reorganization download, src and other parts." />
     <MESSAGE value="Preprocessing, download and other stuff" />
     <MESSAGE value="Report Radiology mimic preprocessing" />
-    <option name="LAST_COMMIT_MESSAGE" value="Report Radiology mimic preprocessing" />
+    <MESSAGE value="Preprocessing Code for mimic" />
+    <option name="LAST_COMMIT_MESSAGE" value="Preprocessing Code for mimic" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -205,7 +320,7 @@
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/preprocess/padchest/padchest_preprocessing.py</url>
+          <url>file://$PROJECT_DIR$/src/preprocess/padchest/preprocessingImagesPadchest.py</url>
           <line>101</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
@@ -216,14 +331,35 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer/pipeline.py</url>
-          <line>22</line>
-          <option name="timeStamp" value="5" />
+          <line>35</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/download/medmax/downloadMedmax.py</url>
+          <line>64</line>
+          <option name="timeStamp" value="11" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/download/medmax/downloadMedmax.py</url>
+          <line>44</line>
+          <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py</url>
+          <option name="timeStamp" value="13" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py</url>
+          <line>133</line>
+          <option name="timeStamp" value="14" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Deep_Sick$parallel.coverage" NAME="parallel Coverage Results" MODIFIED="1747920036572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />
+    <SUITE FILE_PATH="coverage/data_json$pipeline.coverage" NAME="pipeline Coverage Results" MODIFIED="1748605405026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer" />
+    <SUITE FILE_PATH="coverage/data_json$downloadMedmax.coverage" NAME="downloadMedmax Coverage Results" MODIFIED="1748685234619" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Deep_Sick$padchest_preprocessing.coverage" NAME="padchest_preprocessing Coverage Results" MODIFIED="1748213263438" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/padchest" />
   </component>
 </project>
