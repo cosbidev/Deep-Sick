@@ -34,27 +34,13 @@ def process_image(
     """
     # Load the image
 
-    img_array = np.array(PIL.Image.open(image_PATH), dtype=np.float32)
+    image_array = np.array(PIL.Image.open(image_PATH), dtype=np.uint8)
 
-    # Normalize the pixel values
-    min_val = np.min(img_array)
-    max_val = np.max(img_array)
-
-    # Convert to float for safe arithmetic operations
-
-    img_array -= min_val
-
-    if max_val != min_val:  # Avoid division by zero
-        img_array /= (max_val - min_val)
-
-    # Scale to 0-255 range
-    img_array *= 255.0
-    # Scale to 8-bit range if needed, e.g., 0–65535
-    image_array = img_array.astype(np.uint8)
-    if not img_array.ndim == 2:  # grayscale
+    if not image_array.ndim == 2:  # grayscale
         image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
     # Histogram equalization
     image_array = cv2.equalizeHist(image_array)
+
 
     # Pad the image to make it square
     h, w = image_array.shape[:2]  # Assuming grayscale; use [:2] for RGB too
@@ -75,9 +61,9 @@ def process_image(
                              mode='constant', constant_values=min_val)
 
     # Resize the image to n*n, with bilinear interpolation
-    image_array = cv2.resize(image_array, (output_dim, output_dim), interpolation=cv2.INTER_LINEAR)
+    image_array = Image.fromarray(image_array).resize((output_dim, output_dim), resample=PIL.Image.Resampling(1))
 
-    return Image.fromarray(image_array)
+    return image_array
 
 
 def preprocess_chestxray(args):
@@ -104,11 +90,12 @@ def preprocess_chestxray(args):
             print(f"Unidentified image error in image: {e!r}", file=sys.stderr)
 
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Preprocess the Padchest dataset')
-    parser.add_argument('--data_path', type=str, default="./data/chestxray14",
-                        help='Path to the raw data of chestxray14')
-    parser.add_argument('--output_path_images', type=str, default='./data/chestxray14',
+    parser.add_argument('--data_path', type=str, default="./data/covidx-cxr-3",
+                        help='Path to the raw data of covidx-cxr-3')
+    parser.add_argument('--output_path_images', type=str, default='./covidx-cxr-3',
                         help='Path to the output folder')
     parser.add_argument('--dimension', type=int, default=512,
                         help='Dimension of the output image')
@@ -129,10 +116,12 @@ def main():
     path_to_images = os.path.join(output_dir, f'images-{args.dimension}')
 
     # Get all the files in the directories
-    dirs_images = [entry for entry in os.scandir(raw_data_path) if entry.is_dir()]
+    fold_dir = [entry for entry in os.scandir(raw_data_path) if entry.is_dir()]
+    for dir in fold_dir:
 
-    for dir in dirs_images:
         print(f'Processing directory: {dir.path}')
+
+        
         name_extension = dir.name
         image_list_to_process = []
 
@@ -141,7 +130,7 @@ def main():
         image_list_to_process.extend(images_list)
 
         # Create chunks
-        num_processes = os.cpu_count() or 4  # Use all available cores or fallback
+        num_processes = 1#os.cpu_count() or 4  # Use all available cores or fallback
         chunk_size = max(1, len(image_list_to_process) // num_processes)
         image_list_chunks = [image_list_to_process[i:i + chunk_size] for i in range(0, len(image_list_to_process), chunk_size)]
 
@@ -152,8 +141,8 @@ def main():
         with Pool(processes=num_processes) as pool:
             pool.map(preprocess_chestxray, worker_args)
 
-    print('Finished preprocessing of NIH ChestXray14')
-
+    print('Finished preprocessing of COVIDX-CXR-3!')
+    print('May the force be with you!')
 
 if __name__ == '__main__':
     main()
