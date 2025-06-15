@@ -4,14 +4,36 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="Some advancements on the MIMIC dataset, ...">
-      <change afterPath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[PREPROCESSING] new datasets, like rexGradient160k. Removal of older dataset not useful.">
+      <change afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/padchest_gr.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/brax/downloadBrax.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/rex-gradient160k/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/rex-gradient160k/demo_rexgradient160k.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/rex-gradient160k/downloadRexgradient160k.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/rex-gradient160k/download_rexgrad160k.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/vindr_cxr/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/download/vindr_cxr/download_vindr_cxr.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/covidx_cxr_3.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/covidx_cxr_3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessReports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessReports.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/bimcv_covid19.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/bimcv_covid19.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/brax.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/brax.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/rsna.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/rsna.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/siim.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/siim.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/vindr_cxr.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/vindr_cxr.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/vindr_pcxr.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/vindr_pcxr.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/TUTORIAL_1ALL.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/TUTORIAL_AFC.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/TUTORIAL_CAR.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/TUTORIAL_CoCross.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/TUTORIAL_FEXT-ML.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/TUTORIAL_NY.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/multiple_linear.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/scancel" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/srun_command" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/download/Object-CXR.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/Object-CXR.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/download/medmax/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/brax/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/download/medmax/downloadMedmax.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,7 +48,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/CheXagent" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="ProjectColorInfo">{
@@ -40,42 +62,43 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
-    "Python.downloadMedmax.executor": "Debug",
-    "Python.padchest_preprocessing.executor": "Run",
-    "Python.parallel.executor": "Debug",
-    "Python.pipeline.executor": "Debug",
-    "Python.preprocessReports.executor": "Debug",
-    "Python.preprocessingImagesPadchest.executor": "Debug",
-    "Python.splitFileCreation.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
-    "WebServerToolWindowPanel.toolwindow.show.date": "false",
-    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
-    "WebServerToolWindowPanel.toolwindow.show.size": "false",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/src/preprocess/covidx-cxr3",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
+    &quot;Python.downloadMedmax.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.padchest_preprocessing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.parallel.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.pipeline.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.preprocessReports.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.preprocessingImagesPadchest.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.splitFileCreation.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/CheXagent/data_chexinstruct/dataset_processors&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors" />
       <recent name="$PROJECT_DIR$/src/preprocess/covidx-cxr3" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/data/object-cxr" />
       <recent name="$PROJECT_DIR$/data/chexpert-public/texts/zips" />
       <recent name="$PROJECT_DIR$/data/chexpert-public/texts" />
       <recent name="$PROJECT_DIR$/data/chexpert-public" />
       <recent name="$PROJECT_DIR$/data/chestxray14" />
-      <recent name="$PROJECT_DIR$/data/padchest" />
     </key>
   </component>
   <component name="RunAnythingCache">
@@ -225,7 +248,10 @@
       <workItem from="1748938029560" duration="30211000" />
       <workItem from="1749050419141" duration="763000" />
       <workItem from="1749051307444" duration="5074000" />
-      <workItem from="1749069313379" duration="13794000" />
+      <workItem from="1749069313379" duration="33126000" />
+      <workItem from="1749734758243" duration="21332000" />
+      <workItem from="1749892667960" duration="16233000" />
+      <workItem from="1749916007359" duration="3359000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -283,7 +309,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748976147703</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="[PREPROCESSING] New dataset code (COVID-CXR3, CXR14, CHEXPERT, CXR14)">
+      <option name="closed" value="true" />
+      <created>1749126264775</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1749126264775</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -308,7 +342,8 @@
     <MESSAGE value="Report Radiology mimic preprocessing" />
     <MESSAGE value="Preprocessing Code for mimic" />
     <MESSAGE value="Some advancements on the MIMIC dataset, ..." />
-    <option name="LAST_COMMIT_MESSAGE" value="Some advancements on the MIMIC dataset, ..." />
+    <MESSAGE value="[PREPROCESSING] New dataset code (COVID-CXR3, CXR14, CHEXPERT, CXR14)" />
+    <option name="LAST_COMMIT_MESSAGE" value="[PREPROCESSING] New dataset code (COVID-CXR3, CXR14, CHEXPERT, CXR14)" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -371,6 +406,20 @@
           <url>file://$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py</url>
           <line>118</line>
           <option name="timeStamp" value="85" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>remoteDeploymentFS://&lt;21a3e61b-8355-407e-953e-ab3ee74b6aa7&gt;/Deep-Sick/data/mimic-nle/extract_mimic_nle.py</url>
+          <line>1</line>
+          <option name="timeStamp" value="86" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/download/rex-gradient160k/demo_rexgradient160k.py</url>
+          <line>44</line>
+          <option name="timeStamp" value="87" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/siim.py</url>
+          <option name="timeStamp" value="88" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

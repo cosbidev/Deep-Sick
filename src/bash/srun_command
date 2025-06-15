@@ -1,1 +1,0 @@
-srun -A NAISS2023-5-493 -n 10 -t 02:30:00 --gpus-per-node=A40:1 --pty bash
