@@ -5,7 +5,7 @@ from nltk.tokenize import wordpunct_tokenize
 import pandas as pd
 import os
 print(os.getcwd())
-os.chdir('/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/data/chexpert-public/chexpert-reports')
+os.chdir('/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/data/chexpert-public/texts')
 print(os.getcwd())
 def format_chunks(tokens):
     # Step 1: Lowercase everything
@@ -136,3 +136,4 @@ def radgraph_xl_preprocess_report(text):
         json.dump(impressions, f, indent=4)
 
 #%%
+    df_findings.to_csv('df_chexpert_plus_240401_preprocessed.csv', index=False)

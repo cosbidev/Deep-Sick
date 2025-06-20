@@ -1,62 +1,80 @@
+import argparse
 import os
 import subprocess
-import argparse
+from tqdm import tqdm
+# -------------------------------
+# GCS Utilities
+# -------------------------------
 
-
-def download_mimic_cxr_data(output_dir):
+def list_gcs_dirs(gcs_path, billing_project):
+    """List directories at a given GCS path."""
     try:
-        output = subprocess.check_output([
-            "gcloud", "storage", "--billing-project", "mimic-jpg-460612", "cp", "-r",
-            "gs://brax-1.1.0.physionet.org/Anonymized_DICOMs/",
-            "gs://brax-1.1.0.physionet.org/images/",
-            "gs://brax-1.1.0.physionet.org/LICENSE.txt",
-            "gs://brax-1.1.0.physionet.org/SHA256SUMS.txt",
-            "gs://brax-1.1.0.physionet.org/master_spreadsheet_update.csv",
-            output_dir
+        result = subprocess.check_output([
+            "gcloud", "storage", "ls", "--billing-project", billing_project, gcs_path
         ])
-        print(output.decode())
+        lines = result.decode().splitlines()
+        return [line.strip() for line in lines if line.endswith("/")]
     except subprocess.CalledProcessError as e:
-        print("Error during initial download:\n", e.output.decode())
+        print(f"[ERROR] Failed to list directories in {gcs_path}: {e}")
+        return []
 
+def download_gcs_resource(gcs_path, local_dir, billing_project):
+    """Download a single GCS resource to a local directory."""
+    try:
+        subprocess.run([
+            "gcloud", "storage", "cp", "-r", "--billing-project", billing_project,
+            gcs_path, local_dir
+        ], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] Failed to download from {gcs_path}: {e}")
 
-def check_and_download_missing_images(output_dir):
-    image_file_path = os.path.join(output_dir, 'IMAGE_FILENAMES')
-    not_found = 0
+# -------------------------------
+# Main Download Function
+# -------------------------------
 
-    if not os.path.exists(image_file_path):
-        print(f"IMAGE_FILENAMES not found at {image_file_path}.")
-        return
+def download_brax_data(output_dir, billing_project="mimic-jpg-460612"):
+    os.makedirs(output_dir, exist_ok=True)
+    print("Checking and downloading metadata and global files...")
 
-    with open(image_file_path) as f:
-        for image in f.readlines():
-            fname = image.strip()
-            local_path = os.path.join(output_dir, fname)
+    static_resources = {
+        "images": "gs://brax-1.1.0.physionet.org/images",
+        "LICENSE.txt": "gs://brax-1.1.0.physionet.org/LICENSE.txt",
+        "SHA256SUMS.txt": "gs://brax-1.1.0.physionet.org/SHA256SUMS.txt",
+        "master_spreadsheet_update.csv": "gs://brax-1.1.0.physionet.org/master_spreadsheet_update.csv"
+    }
 
-            if not os.path.exists(local_path):
-                not_found += 1
-                print(f"{fname} not found. Downloading...")
-                try:
-                    output = subprocess.check_output([
-                        "gcloud", "storage", "--billing-project", "mimic-jpg-460612", "cp",
-                        f"gs://mimic-cxr-jpg-2.1.0.physionet.org/{fname}", local_path
-                    ])
-                    print(output.decode())
-                except subprocess.CalledProcessError as e:
-                    print(f"Failed to download {fname}:\n", e.output.decode())
+    for name, gcs_path in static_resources.items():
+        local_path = os.path.join(output_dir, name)
 
-    print(f"\nTotal missing files downloaded: {not_found}")
+        download_gcs_resource(gcs_path, output_dir, billing_project)
+
+    """# Download image-level resources (images/ and Anonymized_DICOMs/)
+    for img_dir in ["gs://brax-1.1.0.physionet.org/images/"]:  # , "gs://brax-1.1.0.physionet.org/Anonymized_DICOMs/"]:
+        folder_name = os.path.basename(os.path.normpath(img_dir))
+        local_img_dir = os.path.join(output_dir, folder_name)
+        os.makedirs(local_img_dir, exist_ok=True)
+
+        print(f"Listing directories in {img_dir}...")
+        directories = list_gcs_dirs(img_dir, billing_project)
+
+        print(f"Starting sequential download of {len(directories)} directories...")
+        for dir_path in tqdm(directories) :
+            patient_id = os.path.basename(os.path.normpath(dir_path))
+            local_path = os.path.join(local_img_dir, patient_id)
+            if os.path.exists(local_path):
+                print(f"[SKIP] {patient_id} already exists.")
+            else:
+                #print(f"[DOWNLOAD] {patient_id} from {dir_path}")
+                download_gcs_resource(dir_path, local_img_dir, billing_project)"""
+
+# -------------------------------
+# Entry Point
+# -------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Download and verify MIMIC-CXR resources.")
     parser.add_argument('-o', '--output', required=True, help="Output directory to store files")
     args = parser.parse_args()
-
-    output_dir = args.output
-    os.makedirs(output_dir, exist_ok=True)
-
-    download_mimic_cxr_data(output_dir)
-    check_and_download_missing_images(output_dir)
-
+    download_brax_data(args.output)
 if __name__ == "__main__":
     main()
-

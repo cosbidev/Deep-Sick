@@ -1,16 +1,7 @@
-
-import os
 import shutil
-
-import pydicom as dicom
 import numpy as np
-import pandas as pd
-import yaml
 import PIL
 from PIL import Image
-from pydicom.errors import InvalidDicomError
-from tqdm import tqdm
-import matplotlib.pyplot as plt
 import cv2
 import argparse
 from multiprocessing import Pool
@@ -18,7 +9,10 @@ import os
 import pandas as pd
 from tqdm import tqdm
 import sys
+from pathlib import Path
+from tqdm import tqdm
 
+PIL.Image.MAX_IMAGE_PIXELS = 243603456
 def create_label_clinical_files(output_dir):
     """ Creates a label file from the meta data
     """
@@ -89,19 +83,33 @@ def process_image(
     return Image.fromarray(image_array)
 
 
-def preprocess_padchest(args):
+def preprocess_brax(args):
     """ Preprocesses the BrixIA dataset and saves it to disk
     """
-    chunks_of_images, dimension, output_dir, path_to_images  = args
+    chunks_of_images, dimension, output_dir, skip_if_exists = args
+
+
+
 
     for img_path in tqdm(chunks_of_images):
+
+        sub_dir_filename = img_path.split('images/')[-1]
+
+        dest_img_path = os.path.join(output_dir, sub_dir_filename)
+
         # Process the image
         try:
+            if skip_if_exists and os.path.exists(dest_img_path):
+                #print(f"Skipping {img_path} as it already exists.")
+                continue
             image = process_image(img_path, dimension)
             # Save the image
-            image_name = os.path.basename(img_path)
+            # Get the parent directory of the image
+            parent_dir = os.path.dirname(dest_img_path)
+
             # Save the image to png
-            image.save(os.path.join(path_to_images, image_name), format='png')
+            os.makedirs(parent_dir, exist_ok=True)
+            image.save(dest_img_path, format='png', quality=95)
 
         except OSError as e:
 
@@ -113,9 +121,9 @@ def preprocess_padchest(args):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Preprocess the Padchest dataset')
-    parser.add_argument('--data_path', type=str, default='/Volumes/Extreme SSD/Filippo/CXRs/PadChest',
+    parser.add_argument('--data_path', type=str, default='/Volumes/Extreme SSD/Filippo/CXRs/brax/images',
                         help='Path to the raw data of padchest')
-    parser.add_argument('--output_path', type=str, default='/Volumes/Extreme SSD/Filippo/CXRs/padchest_preprocessed',
+    parser.add_argument('--output_path', type=str, default='/Volumes/Extreme SSD/Filippo/CXRs/brax',
                         help='Path to the output folder')
     parser.add_argument('--dimension', type=int, default=512,
                         help='Dimension of the output image')
@@ -129,57 +137,41 @@ def main():
     # Paths
     raw_data_path = args.data_path
     output_dir = args.output_path
-    os.makedirs(output_dir, exist_ok=True)
+    # os.makedirs(output_dir, exist_ok=True)
     os.makedirs(os.path.join(output_dir, f'images-{args.dimension}'), exist_ok=True)
     path_to_images = os.path.join(output_dir, f'images-{args.dimension}')
 
-    # Get all the zipped directories
+    # Get all the files in the directories
+    dirs_images = [entry for entry in os.scandir(raw_data_path) if entry.is_dir()]
+    image_list_to_process = []
+    for dir in tqdm(dirs_images, desc='Processing directories', unit='dir'):
+        #print(f'Processing directory: {dir.path}')
+        name_extension = dir.name
 
-    skip = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
-            '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23',
-            '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34',
-            '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46']
-    dirs_unzipped = [entry for entry in os.scandir(raw_data_path) if entry.path.endswith('.zip') and not entry.name.startswith('.')]
 
-    # Filter out directories that start with '0' to '12'
-    dirs_unzipped = [dir for dir in dirs_unzipped if not any([dir.name.split('.zip')[0] == s for s in skip])]
+        root_dir = Path(dir.path)
+        images_list = [str(p) for p in root_dir.rglob("*") if p.suffix.lower() == ".png"]
+        #image_list_to_process.extend(images_list)
+        for image_path in images_list:
+            # Check if the image already exists in the output directory
+            sub_dir_filename = image_path.split('images/')[-1]
+            dest_img_path = os.path.join(path_to_images, sub_dir_filename)
+            if not os.path.exists(dest_img_path):
+                image_list_to_process.append(image_path)
 
-    for dir in dirs_unzipped:
-        print(f'Processing directory: {dir.path}')
+    # Create chunks
+    num_processes = 6#os.cpu_count() or 4  # Use all available cores or fallback
+    chunk_size = max(1, len(image_list_to_process) // num_processes)
+    image_list_chunks = [image_list_to_process[i:i + chunk_size] for i in range(0, len(image_list_to_process), chunk_size)]
+    skip_if_exists = True
+    # Wrap the chunks with args for the pool
+    worker_args = [(chunk, args.dimension, path_to_images, skip_if_exists) for chunk in image_list_chunks]
+    # Multiprocessing
+    with Pool(processes=num_processes) as pool:
+        pool.map(preprocess_brax, worker_args)
 
-        # If the directory is not unzipped, unzip it
-        unzipped_dir_path = dir.path[:-4]
-        if not os.path.exists(unzipped_dir_path) and not os.path.isdir(unzipped_dir_path):
-            # Unzip the directory
-            print(f'Unzipping {dir.path}...')
-            shutil.unpack_archive(dir.path, dir.path[:-4])
-        else:
-            print(f'Directory {dir.path[:-4]} already exists, skipping unzip.')
-        # Now we have the unzipped directory
-        unzipped_dir_path = dir.path[:-4]
-        # Collect all image paths
-        image_list_to_process = []
-        print(f'Scanning directory: {unzipped_dir_path}')
-        images_list = [entry.path for entry in os.scandir(unzipped_dir_path) if entry.is_file() and entry.name.endswith('.png') and not entry.name.startswith('.')]
-        image_list_to_process.extend(images_list)
+    print('Finished preprocessing of BRAX')
 
-        # Create chunks
-        num_processes = os.cpu_count() or 4  # Use all available cores or fallback
-        chunk_size = max(1, len(image_list_to_process) // num_processes)
-        image_list_chunks = [image_list_to_process[i:i + chunk_size] for i in range(0, len(image_list_to_process), chunk_size)]
-
-        # Wrap the chunks with args for the pool
-        worker_args = [(chunk, args.dimension, args.output_path, path_to_images) for chunk in image_list_chunks]
-
-        # Multiprocessing
-        with Pool(processes=num_processes) as pool:
-            pool.map(preprocess_padchest, worker_args)
-
-        # Remove the unzipped directory
-        print(f'Removing unzipped directory: {dir.path}')
-        shutil.rmtree(unzipped_dir_path, ignore_errors=True)
-
-    print('Finished preprocessing of Padchest')
 
 if __name__ == '__main__':
     main()

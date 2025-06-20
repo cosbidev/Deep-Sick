@@ -21,6 +21,6 @@ module load scikit-learn/1.3.1
 # Activate the enviroment
 source Deep_Sick_env/bin/activate
 python CheXagent/data_chexinstruct/dataset_processors/vindr_cxr.py
-python CheXagent/data_chexinstruct/dataset_processors/vindr_pcxr
+python CheXagent/data_chexinstruct/dataset_processors/vindr_pcxr.py
 
 
