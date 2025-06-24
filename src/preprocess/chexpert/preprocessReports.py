@@ -1,4 +1,4 @@
-#%%
+
 import json
 import re
 from nltk.tokenize import wordpunct_tokenize
@@ -43,9 +43,16 @@ def radgraph_xl_preprocess_report(text):
     text_sub = re.sub(r'\(.*?\)|\[.*?\]', '', text_sub)
     search = re.findall(r'(\b\d{1,2}\s*[-\/]\s*\d{1,2}(?:\s*[-\/]\s*\d{2,4})?\b|\b(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+\d{1,2}(?:st|nd|rd|th)?)?(?:\s*,?\s*\d{2,4})?\b)', text_sub)
 
-    # Slit the text based on '.'
-    text_sub_chunks = re.split(r'[.,]+\s*', text_sub)
+    chunks = re.split(r'(?<!\d)([.,])(?!\d)\s*', text_sub)
 
+    # Optional: recombine punctuation with previous token
+    final = []
+    for i in range(0, len(chunks), 2):
+        part = chunks[i]
+        if i + 1 < len(chunks):
+            part += chunks[i + 1]
+        final.append(part.strip())
+    text_sub_chunks = [chunk.strip() for chunk in final if chunk.strip() and len(chunk.strip()) > 1]
     # Remove empty chunks
     if len(text_sub_chunks) == 0:
         pass
@@ -93,21 +100,19 @@ def radgraph_xl_preprocess_report(text):
     tokenized_text = tokenized_text.replace("%)", "% )")
     return tokenized_text
 
-    # %%
 
+if __name__ == "__main__":
     # Load the CSV file into a DataFrame
     df = pd.read_csv('df_chexpert_plus_240401.csv')
 
     # --- Preprocess the findings text
-    df_findings = df[df['section_findings'].apply(lambda x: isinstance(x, str) and len(x.split()) >= 2)]
-
+    df_findings_index = df['section_findings'].apply(lambda x: isinstance(x, str) and len(x.split()) >= 2)
+    df_impression_index = df['section_impression'].apply(lambda x: isinstance(x, str) and len(x.split()) >= 2)
     # Preprocess the 'section_findings' and 'section_impression' columns
-    df_findings.loc[:,'section_findings'] = df_findings['section_findings'].apply(lambda x: radgraph_xl_preprocess_report(x))
-    df_findings['section_impression'] = df_findings['section_impression'].apply(lambda x: radgraph_xl_preprocess_report(x))
-    df_findings.reset_index(drop=True, inplace=True)
-#%%
-    #df_impression.loc['section_impression'] = df_impression['section_impression'].apply(lambda x: radgraph_xl_preprocess_report(x))
-    print(f"Number of findings: {len(df_findings)}")
+    df['prepro_section_findings'] = df[df_findings_index]['section_findings'].apply(lambda x: radgraph_xl_preprocess_report(x))
+    df['prepro_section_impression'] = df[df_impression_index]['section_impression'].apply(lambda x: radgraph_xl_preprocess_report(x))
+
+
 
     # Load radgraph-XL annotations
     with open("radgraph-XL-annotations/section_findings.json") as f:
@@ -115,25 +120,23 @@ def radgraph_xl_preprocess_report(text):
     with open("radgraph-XL-annotations/section_impression.json") as f:
         impressions = json.load(f)
 
-    df_findings['section_findings_radgraph'] = df_findings['section_findings'].astype(str)
-    for ix, (find, impress) in enumerate(zip(findings, impressions)):
+    for (find, ix_fnd) in zip(findings, df[df_findings_index].index):
+
         finding = find['0']['text']
+        df.loc[ix_fnd, 'section_findings_radgraph'] = finding
+
+
+    for (impress, ix_imp) in zip(impressions, df[df_impression_index].index):
+
         impression = impress['0']['text']
-        df_findings.loc[ix, 'section_findings_radgraph'] = finding
-        df_findings.loc[ix, 'section_impression_radgraph'] = impression
-        # Add the path to the image and other metadata to the annotations file
-        findings[ix]['0']['path_to_image'] = df_findings.loc[ix, 'path_to_image']
-        impressions[ix]['0']['path_to_image'] = df_findings.loc[ix, 'path_to_image']
+        df.loc[ix_imp, 'section_impression_radgraph'] = impression
 
 
 
     # Save to a new CSV file
-    df_findings.to_csv('df_chexpert_plus_240401_preprocessed.csv', index=False)
+    df.to_csv('df_chexpert_plus_240401_preprocessed.csv', index=False)
     # Save a new JSON file with the annotations
-    with open('radgraph-XL-annotations/section_findings_preprocessed.json', 'w') as f:
-        json.dump(findings, f, indent=4)
-    with open('radgraph-XL-annotations/section_impression_preprocessed.json', 'w') as f:
-        json.dump(impressions, f, indent=4)
-
-#%%
-    df_findings.to_csv('df_chexpert_plus_240401_preprocessed.csv', index=False)
+    #with open('radgraph-XL-annotations/section_findings_preprocessed.json', 'w') as f:
+    #    json.dump(findings, f, indent=4)
+    #with open('radgraph-XL-annotations/section_impression_preprocessed.json', 'w') as f:
+    #    json.dump(impressions, f, indent=4)
