@@ -26,16 +26,6 @@ def download_and_save(dataset_name: str, base_dir: str, token=None):
 
     print("✅ Download e salvataggio completati.")
 
-def load_all_splits(base_dir: str) -> DatasetDict:
-    """Carica tutti gli split salvati in precedenza da disco."""
-    print(f"📂 Caricamento dei dati da {base_dir}")
-    dataset = DatasetDict({
-        "train": load_from_disk(os.path.join(base_dir, "train")),
-        "validation": load_from_disk(os.path.join(base_dir, "validation")),
-        "test": load_from_disk(os.path.join(base_dir, "test")),
-    })
-    print("✅ Dataset caricato con successo.")
-    return dataset
 
 def explore_sample(dataset: DatasetDict):
     """Stampa un esempio da ciascuno split."""
@@ -60,8 +50,3 @@ if __name__ == "__main__":
     # Step 2: carica
     dataset = load_all_splits(BASE_DIR)
 
-    # Step 3: esplora
-    explore_sample(dataset)
-
-    # Step 4: filtro (opzionale)
-    filtered = filter_with_findings(dataset)
