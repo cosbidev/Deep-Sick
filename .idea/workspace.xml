@@ -4,24 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v1] The compile_chexinstruct.py has produced the first complete dataset. Still some work to do on some of the task remaining.">
-      <change afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/analyzer_chexinstruct.py" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/brax.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/brax.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chestxray14.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chestxray14.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chexpert_public.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chexpert_public.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/covidx_cxr_3.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/covidx_cxr_3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/cxr_lt.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/cxr_lt.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_cxr.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_cxr.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_cxr_vqa.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_cxr_vqa.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_diff_vqa.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_diff_vqa.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_nle.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_nle.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/ms_cxr.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/ms_cxr.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/ms_cxr_t.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/ms_cxr_t.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/padchest.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/padchest.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/rex_gradient.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/rex_gradient.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/vindr_pcxr.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/vindr_pcxr.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -440,15 +432,15 @@
       <item itemvalue="Python.demo_rexgradient160k" />
       <item itemvalue="Python.downloadBrax" />
       <item itemvalue="Python.downloadMedmax" />
+      <item itemvalue="Python.openi" />
+      <item itemvalue="Python.preprocessReports" />
+      <item itemvalue="Python.rex_gradient" />
+      <item itemvalue="Python.splitFileCreation" />
       <item itemvalue="Python.extract_mimic_nle" />
       <item itemvalue="Python.mimic_cxr_vqa" />
       <item itemvalue="Python.mimic_nle" />
       <item itemvalue="Python.ms_cxr" />
-      <item itemvalue="Python.openi" />
-      <item itemvalue="Python.preprocessReports" />
-      <item itemvalue="Python.rex_gradient" />
       <item itemvalue="Python.siim" />
-      <item itemvalue="Python.splitFileCreation" />
     </list>
     <recent_temporary>
       <list>
@@ -517,7 +509,7 @@
       <workItem from="1750860851157" duration="25565000" />
       <workItem from="1750926163318" duration="16483000" />
       <workItem from="1750951224612" duration="81000" />
-      <workItem from="1750951322083" duration="117000" />
+      <workItem from="1750951322083" duration="1481000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -615,7 +607,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750889212075</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs.">
+      <option name="closed" value="true" />
+      <created>1750951492530</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1750951492530</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -645,7 +645,8 @@
     <MESSAGE value="[PREPROCESSING] reorganization of work, exclusion of different datasets." />
     <MESSAGE value="[PREPROCESSING] mimic_cxr.py and chexpert_public.py completed for compilation, rexAgent160k missing." />
     <MESSAGE value="[Preprocessing v1] The compile_chexinstruct.py has produced the first complete dataset. Still some work to do on some of the task remaining." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Preprocessing v1] The compile_chexinstruct.py has produced the first complete dataset. Still some work to do on some of the task remaining." />
+    <MESSAGE value="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs." />
+    <option name="LAST_COMMIT_MESSAGE" value="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -720,7 +721,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/padchest.py</url>
-          <line>90</line>
+          <line>87</line>
           <option name="timeStamp" value="257" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
