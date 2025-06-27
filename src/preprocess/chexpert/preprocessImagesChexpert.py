@@ -139,7 +139,7 @@ def main():
     raw_data_path = args.data_path
 
     # TRAIN, VAL, TEST splits
-    for split in ['train', 'valid', 'test']:
+    for split in ['valid', 'test']:
 
         split_path = os.path.join(raw_data_path, split)
         output_dir_split = os.path.join(args.output_path, f"{split}-{args.dimension}")

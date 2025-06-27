@@ -4,16 +4,21 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs.">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked">
+      <change afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compule_cxi.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/evaluate/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/analyzer_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/analyzer_chexinstruct.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/brax.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/brax.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chestxray14.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chestxray14.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chexpert_public.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chexpert_public.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/cxr_lt.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/cxr_lt.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_cxr.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_cxr.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/ms_cxr.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/ms_cxr.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/padchest.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/padchest.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bash/BASH_template_DS.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/BASH_template_DS.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/download/Object-CXR.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/Object-CXR.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/download/brax/downloadBrax.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/brax/downloadBrax.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/download/vindr_cxr/download_vindr_cxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/vindr_cxr/download_vindr_cxr.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/brax/PreprocessBraxImages.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/brax/PreprocessBraxImages.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessImagesChexpert.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessImagesChexpert.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,45 +48,46 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
-    &quot;Python.PreprocessBraxImages.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.brax.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.chexpert_public.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.demo_rexgradient160k.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.downloadBrax.executor&quot;: &quot;Run&quot;,
-    &quot;Python.downloadMedmax.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.extract_mimic_nle.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_cxr.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_cxr_vqa.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_nle.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ms_cxr.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.openi.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.padchest_preprocessing.executor&quot;: &quot;Run&quot;,
-    &quot;Python.parallel.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.pipeline.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.preprocessReports.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.preprocessingImagesPadchest.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.rex_gradient.executor&quot;: &quot;Run&quot;,
-    &quot;Python.siim.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.splitFileCreation.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/data&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Python.PreprocessBraxImages.executor": "Debug",
+    "Python.analyzer_chexinstruct.executor": "Debug",
+    "Python.brax.executor": "Debug",
+    "Python.chexpert_public.executor": "Debug",
+    "Python.demo_rexgradient160k.executor": "Debug",
+    "Python.downloadBrax.executor": "Run",
+    "Python.downloadMedmax.executor": "Debug",
+    "Python.extract_mimic_nle.executor": "Debug",
+    "Python.mimic_cxr.executor": "Debug",
+    "Python.mimic_cxr_vqa.executor": "Debug",
+    "Python.mimic_nle.executor": "Run",
+    "Python.ms_cxr.executor": "Debug",
+    "Python.openi.executor": "Debug",
+    "Python.padchest_preprocessing.executor": "Run",
+    "Python.parallel.executor": "Debug",
+    "Python.pipeline.executor": "Debug",
+    "Python.preprocessReports.executor": "Debug",
+    "Python.preprocessingImagesPadchest.executor": "Debug",
+    "Python.rex_gradient.executor": "Run",
+    "Python.siim.executor": "Debug",
+    "Python.splitFileCreation.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "false",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/data",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/data" />
@@ -103,7 +109,7 @@
       <command value="d" />
     </option>
   </component>
-  <component name="RunManager" selected="Python.siim">
+  <component name="RunManager" selected="Python.analyzer_chexinstruct">
     <configuration name="PreprocessBraxImages" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="Deep-Sick" />
       <option name="ENV_FILES" value="" />
@@ -119,6 +125,29 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/preprocess/brax/PreprocessBraxImages.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="analyzer_chexinstruct" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Deep-Sick" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/CheXagent/data_chexinstruct/analyzer_chexinstruct.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -234,29 +263,6 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/data/mimic-nle/extract_mimic_nle.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="mimic_cxr_vqa" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Deep-Sick" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/mimic_cxr_vqa.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -436,19 +442,19 @@
       <item itemvalue="Python.preprocessReports" />
       <item itemvalue="Python.rex_gradient" />
       <item itemvalue="Python.splitFileCreation" />
+      <item itemvalue="Python.analyzer_chexinstruct" />
       <item itemvalue="Python.extract_mimic_nle" />
-      <item itemvalue="Python.mimic_cxr_vqa" />
       <item itemvalue="Python.mimic_nle" />
       <item itemvalue="Python.ms_cxr" />
       <item itemvalue="Python.siim" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.analyzer_chexinstruct" />
         <item itemvalue="Python.siim" />
         <item itemvalue="Python.ms_cxr" />
         <item itemvalue="Python.mimic_nle" />
         <item itemvalue="Python.extract_mimic_nle" />
-        <item itemvalue="Python.mimic_cxr_vqa" />
       </list>
     </recent_temporary>
   </component>
@@ -509,7 +515,8 @@
       <workItem from="1750860851157" duration="25565000" />
       <workItem from="1750926163318" duration="16483000" />
       <workItem from="1750951224612" duration="81000" />
-      <workItem from="1750951322083" duration="1481000" />
+      <workItem from="1750951322083" duration="3191000" />
+      <workItem from="1751010406863" duration="7406000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -615,7 +622,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750951492530</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked">
+      <option name="closed" value="true" />
+      <created>1750952985644</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1750952985644</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -646,7 +661,8 @@
     <MESSAGE value="[PREPROCESSING] mimic_cxr.py and chexpert_public.py completed for compilation, rexAgent160k missing." />
     <MESSAGE value="[Preprocessing v1] The compile_chexinstruct.py has produced the first complete dataset. Still some work to do on some of the task remaining." />
     <MESSAGE value="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs." />
+    <MESSAGE value="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
+    <option name="LAST_COMMIT_MESSAGE" value="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -706,11 +722,6 @@
           <option name="timeStamp" value="86" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/preprocess/brax/PreprocessBraxImages.py</url>
-          <line>162</line>
-          <option name="timeStamp" value="115" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/vindr_cxr.py</url>
           <option name="timeStamp" value="244" />
         </line-breakpoint>
@@ -729,6 +740,11 @@
           <line>35</line>
           <option name="timeStamp" value="259" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/CheXagent/data_chexinstruct/analyzer_chexinstruct.py</url>
+          <line>22</line>
+          <option name="timeStamp" value="262" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
@@ -740,6 +756,7 @@
     <SUITE FILE_PATH="coverage/data_json$preprocessReports.coverage" NAME="preprocessReports Coverage Results" MODIFIED="1750690271293" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/chexpert-public/texts" />
     <SUITE FILE_PATH="coverage/Deep_Sick$padchest_preprocessing.coverage" NAME="padchest_preprocessing Coverage Results" MODIFIED="1748213263438" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/padchest" />
     <SUITE FILE_PATH="coverage/data_json$rex_gradient.coverage" NAME="rex_gradient Coverage Results" MODIFIED="1750851878126" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/data_json$analyzer_chexinstruct.coverage" NAME="analyzer_chexinstruct Coverage Results" MODIFIED="1751010718621" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/data_json$mimic_cxr.coverage" NAME="mimic_cxr Coverage Results" MODIFIED="1750765692727" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/data_json$chexpert_public.coverage" NAME="chexpert_public Coverage Results" MODIFIED="1750695443415" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors" />
     <SUITE FILE_PATH="coverage/Deep_Sick$parallel.coverage" NAME="parallel Coverage Results" MODIFIED="1747920036572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />

@@ -127,10 +127,19 @@ def main():
 
         root_dir = Path(dir.path)
         images_list = [str(p) for p in root_dir.rglob("*") if p.suffix.lower() == ".png"]
+        
+        dest_dir = Path(os.path.join(path_to_images, name_extension))
+        images_list_saved = [os.path.basename(str(p)) for p in dest_dir.rglob("*") if p.suffix.lower() == ".png"]
+
+        if len(images_list) == len(images_list_saved):
+            continue
+        else: 
+            images_list = [image for image in images_list if os.path.basename(image) not in images_list_saved]
+
         image_list_to_process.extend(images_list)
 
         # Create chunks
-        num_processes = 1#os.cpu_count() or 4  # Use all available cores or fallback
+        num_processes = os.cpu_count() or 4  # Use all available cores or fallback
         chunk_size = max(1, len(image_list_to_process) // num_processes)
         image_list_chunks = [image_list_to_process[i:i + chunk_size] for i in range(0, len(image_list_to_process), chunk_size)]
 

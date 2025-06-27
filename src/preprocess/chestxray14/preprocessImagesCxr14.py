@@ -130,9 +130,11 @@ def main():
 
     # Get all the files in the directories
     dirs_images = [entry for entry in os.scandir(raw_data_path) if entry.is_dir()]
-
+    
     for dir in dirs_images:
+ 
         print(f'Processing directory: {dir.path}')
+        if dir.name == f'images-{args.dimension}': continue
         name_extension = dir.name
         image_list_to_process = []
 
@@ -144,7 +146,10 @@ def main():
         num_processes = os.cpu_count() or 4  # Use all available cores or fallback
         chunk_size = max(1, len(image_list_to_process) // num_processes)
         image_list_chunks = [image_list_to_process[i:i + chunk_size] for i in range(0, len(image_list_to_process), chunk_size)]
-
+        # Remove the older dir: 
+        shutil.rmtree(dir.path)
+        if os.path.exists(os.path.join(path_to_images, name_extension)): 
+            if len(os.listdir(os.path.join(path_to_images, name_extension))) == len(images_list): continue
         # Wrap the chunks with args for the pool
         worker_args = [(chunk, args.dimension, args.output_path_images, os.path.join(path_to_images, name_extension)) for chunk in image_list_chunks]
 
