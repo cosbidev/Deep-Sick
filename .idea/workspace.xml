@@ -4,26 +4,66 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked">
-      <change afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compule_cxi.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/evaluate/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/__init__.py" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked">
+      <change afterPath="$PROJECT_DIR$/src/datasets/ChexInstruct.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/datasets/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/RRG/INDEX.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/RRG/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/RRG/ds_config_zero3.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/RRG/finetune.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/RRG/finetune.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/radllama/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/radllama/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/radllama/ds_config_zero3.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/radllama/finetune.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/train/radllama/finetune.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/analyzer_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/analyzer_chexinstruct.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/bash/BASH_template_DS.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/BASH_template_DS.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/download/Object-CXR.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/Object-CXR.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/download/brax/downloadBrax.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/brax/downloadBrax.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/download/vindr_cxr/download_vindr_cxr.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/download/vindr_cxr/download_vindr_cxr.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/brax/PreprocessBraxImages.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/brax/PreprocessBraxImages.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessImagesChexpert.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chexpert/preprocessImagesChexpert.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/config_aggregate.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/PR-FEXT-ml.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/feature_extraction.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/full_finetuning_CFSL.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/full_finetuning_FSL.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_IA3_CFSL_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_IA3_FSL_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_16_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_4_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_CFSL_16_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_CFSL_4_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_CFSL_8_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_FSL_16_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_FSL_4_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_FSL_8_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_16_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_4_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_8_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_CFSL_16_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_CFSL_4_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_CFSL_8_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_FSL_16_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_FSL_4_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_FSL_8_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_fitbit_CFSL_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_fitbit_FSL_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_fitbit_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_none_CFSL_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_none_FSL_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_none_test_all.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/models/biomedclip.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/models/medgemma.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/RRG/INDEX.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/ds_config_zero3.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/finetune.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/finetune.sh" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EditorConfigPreviewManager">
+    <editorConfig file="$PROJECT_DIR$/LLaVA-NeXT/.editorconfig" previewFile="$PROJECT_DIR$/LLaVA-NeXT/README.md" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -34,7 +74,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/CheXagent" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/ReXrank" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="ProjectColorInfo">{
@@ -79,7 +119,7 @@
     "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
     "WebServerToolWindowPanel.toolwindow.show.size": "false",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/data",
+    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/src/train",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -90,18 +130,18 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/train" />
       <recent name="$PROJECT_DIR$/data" />
       <recent name="$PROJECT_DIR$/data/rex-gradient160k/metadata" />
       <recent name="$PROJECT_DIR$/src/preprocess/brax" />
       <recent name="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors" />
-      <recent name="$PROJECT_DIR$/src/preprocess/covidx-cxr3" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/train/RRG" />
+      <recent name="$PROJECT_DIR$/src/train" />
       <recent name="$PROJECT_DIR$/data/mimic-cxr" />
       <recent name="$PROJECT_DIR$/data/chexpert-public/texts" />
       <recent name="$PROJECT_DIR$/data/object-cxr" />
-      <recent name="$PROJECT_DIR$/data/chexpert-public/texts/zips" />
-      <recent name="$PROJECT_DIR$/data/chexpert-public" />
     </key>
   </component>
   <component name="RunAnythingCache">
@@ -516,7 +556,7 @@
       <workItem from="1750926163318" duration="16483000" />
       <workItem from="1750951224612" duration="81000" />
       <workItem from="1750951322083" duration="3191000" />
-      <workItem from="1751010406863" duration="7406000" />
+      <workItem from="1751010406863" duration="21679000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -630,7 +670,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750952985644</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked">
+      <option name="closed" value="true" />
+      <created>1751019972532</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1751019972532</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -662,7 +710,8 @@
     <MESSAGE value="[Preprocessing v1] The compile_chexinstruct.py has produced the first complete dataset. Still some work to do on some of the task remaining." />
     <MESSAGE value="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs." />
     <MESSAGE value="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
-    <option name="LAST_COMMIT_MESSAGE" value="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
+    <MESSAGE value="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
+    <option name="LAST_COMMIT_MESSAGE" value="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -712,11 +761,6 @@
           <option name="timeStamp" value="58" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py</url>
-          <line>118</line>
-          <option name="timeStamp" value="85" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>remoteDeploymentFS://&lt;21a3e61b-8355-407e-953e-ab3ee74b6aa7&gt;/Deep-Sick/data/mimic-nle/extract_mimic_nle.py</url>
           <line>1</line>
           <option name="timeStamp" value="86" />
@@ -745,6 +789,16 @@
           <line>22</line>
           <option name="timeStamp" value="262" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py</url>
+          <line>265</line>
+          <option name="timeStamp" value="263" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py</url>
+          <line>16</line>
+          <option name="timeStamp" value="264" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
@@ -756,7 +810,7 @@
     <SUITE FILE_PATH="coverage/data_json$preprocessReports.coverage" NAME="preprocessReports Coverage Results" MODIFIED="1750690271293" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/data/chexpert-public/texts" />
     <SUITE FILE_PATH="coverage/Deep_Sick$padchest_preprocessing.coverage" NAME="padchest_preprocessing Coverage Results" MODIFIED="1748213263438" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/padchest" />
     <SUITE FILE_PATH="coverage/data_json$rex_gradient.coverage" NAME="rex_gradient Coverage Results" MODIFIED="1750851878126" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/data_json$analyzer_chexinstruct.coverage" NAME="analyzer_chexinstruct Coverage Results" MODIFIED="1751010718621" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/data_json$analyzer_chexinstruct.coverage" NAME="analyzer_chexinstruct Coverage Results" MODIFIED="1751023424323" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/data_json$mimic_cxr.coverage" NAME="mimic_cxr Coverage Results" MODIFIED="1750765692727" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/data_json$chexpert_public.coverage" NAME="chexpert_public Coverage Results" MODIFIED="1750695443415" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors" />
     <SUITE FILE_PATH="coverage/Deep_Sick$parallel.coverage" NAME="parallel Coverage Results" MODIFIED="1747920036572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/download/mimic-cxr" />

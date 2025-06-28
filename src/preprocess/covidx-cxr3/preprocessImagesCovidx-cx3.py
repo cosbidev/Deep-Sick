@@ -41,7 +41,6 @@ def process_image(
     # Histogram equalization
     image_array = cv2.equalizeHist(image_array)
 
-
     # Pad the image to make it square
     h, w = image_array.shape[:2]  # Assuming grayscale; use [:2] for RGB too
     min_val = np.min(image_array)  # Or some predefined padding value
@@ -74,9 +73,11 @@ def preprocess_chestxray(args):
     for img_path in tqdm(chunks_of_images):
         # Process the image
         try:
-            image = process_image(img_path, dimension)
             # Save the image
             image_name = os.path.basename(img_path)
+            if os.path.exists(os.path.join(path_to_images, image_name)):
+                continue
+            image = process_image(img_path, dimension)
 
             os.makedirs(path_to_images, exist_ok=True)
             # Save the image to png
@@ -90,7 +91,6 @@ def preprocess_chestxray(args):
             print(f"Unidentified image error in image: {e!r}", file=sys.stderr)
 
 
-
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Preprocess the Padchest dataset')
     parser.add_argument('--data_path', type=str, default="./data/covidx-cxr-3",
@@ -100,7 +100,6 @@ def parse_arguments():
     parser.add_argument('--dimension', type=int, default=512,
                         help='Dimension of the output image')
     return parser.parse_args()
-
 
 
 def main():
@@ -116,25 +115,18 @@ def main():
     path_to_images = os.path.join(output_dir, f'images-{args.dimension}')
 
     # Get all the files in the directories
-    fold_dir = [entry for entry in os.scandir(raw_data_path) if entry.is_dir()]
+    fold_dir = [entry for entry in os.scandir(raw_data_path) if entry.is_dir() and not '512' in entry.path]
     for dir in fold_dir:
+
 
         print(f'Processing directory: {dir.path}')
 
-        
         name_extension = dir.name
         image_list_to_process = []
 
         root_dir = Path(dir.path)
-        images_list = [str(p) for p in root_dir.rglob("*") if p.suffix.lower() == ".png"]
-        
-        dest_dir = Path(os.path.join(path_to_images, name_extension))
-        images_list_saved = [os.path.basename(str(p)) for p in dest_dir.rglob("*") if p.suffix.lower() == ".png"]
+        images_list = [str(p) for p in root_dir.rglob("*") if p.suffix.lower() == ".png" or p.suffix.lower() == ".jpg" or p.suffix.lower() == ".jpeg"]
 
-        if len(images_list) == len(images_list_saved):
-            continue
-        else: 
-            images_list = [image for image in images_list if os.path.basename(image) not in images_list_saved]
 
         image_list_to_process.extend(images_list)
 
@@ -152,6 +144,7 @@ def main():
 
     print('Finished preprocessing of COVIDX-CXR-3!')
     print('May the force be with you!')
+
 
 if __name__ == '__main__':
     main()
