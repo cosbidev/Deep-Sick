@@ -5,57 +5,43 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked">
-      <change afterPath="$PROJECT_DIR$/src/datasets/ChexInstruct.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/datasets/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/RRG/INDEX.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/RRG/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/RRG/ds_config_zero3.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/RRG/finetune.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/RRG/finetune.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/radllama/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/radllama/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/radllama/ds_config_zero3.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/radllama/finetune.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/train/radllama/finetune.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/dataset/ChexInstruct.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/dataset/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/INDEX.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/ds_config_zero3.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/finetune.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/finetune.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/ds_config_zero3.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/finetune.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/finetune.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/util_models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/config_aggregate.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/PR-FEXT-ml.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/feature_extraction.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/full_finetuning_CFSL.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/full_finetuning_FSL.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_IA3_CFSL_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_IA3_FSL_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_16_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_4_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_CFSL_16_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_CFSL_4_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_CFSL_8_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_FSL_16_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_FSL_4_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_LoRa_FSL_8_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_16_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_4_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_8_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_CFSL_16_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_CFSL_4_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_CFSL_8_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_FSL_16_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_FSL_4_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_VeRA_FSL_8_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_fitbit_CFSL_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_fitbit_FSL_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_fitbit_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_none_CFSL_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_none_FSL_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/linear_probing_none_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/models/biomedclip.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/configs/PEFT_runs/experiment/models/medgemma.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/datasets/ChexInstruct.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/datasets/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/RRG/INDEX.md" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/README.md" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/ds_config_zero3.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/finetune.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/finetune.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/covidx-cxr3/preprocessImagesCovidx-cx3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/RRG/INDEX.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/RRG/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/RRG/ds_config_zero3.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/RRG/finetune.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/RRG/finetune.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/radllama/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/radllama/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/radllama/ds_config_zero3.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/radllama/finetune.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/train/radllama/finetune.sh" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +60,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/ReXrank" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="ProjectColorInfo">{
@@ -124,7 +110,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -556,7 +542,7 @@
       <workItem from="1750926163318" duration="16483000" />
       <workItem from="1750951224612" duration="81000" />
       <workItem from="1750951322083" duration="3191000" />
-      <workItem from="1751010406863" duration="21679000" />
+      <workItem from="1751010406863" duration="32982000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
