@@ -1,105 +1,152 @@
-import random, os, re, pickle, json
-from datasets import Dataset, DatasetDict, Features, Value, Image, Sequence
+import os, re, pickle, random, gc
+from datasets import Dataset, DatasetDict, Features, Value, Image, Sequence, load_dataset
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 
-# ────────────────────────────────────────────────
-# 1.  ❱❱  CONFIGURE
-# ────────────────────────────────────────────────
-SEED = 42
-random.seed(SEED)
+# ─────────────────────  SAMPLE FLATTENER  ────────────────────
+def _flatten_one_sample(*args):
+    sample, missing, sampling_rate = args
+    out = []
 
-data_dir       = "data_chexinstruct/"
-pickle_splits  = {
-    "train": os.path.join(data_dir, "data_train_chexinstruct.pkl"),
-    "val"  : os.path.join(data_dir, "data_val_chexinstruct.pkl"),
-    "test" : os.path.join(data_dir, "data_test_chexinstruct.pkl")
-}
+    img_paths = sample.get("image_path", [])
+    if isinstance(img_paths, str):
+        img_paths = [img_paths]
 
-#  ➜  List of extra keys you want to keep from each qa_pair
-EXTRA_QA_KEYS = ["unique_id"]     # ← edit / extend as needed
+    if img_paths and any(p in missing for p in img_paths):
+        return out  # skip due to missing image
 
-# ────────────────────────────────────────────────
-# 2.  ❱❱  LOAD LIST OF MISSING IMAGES
-# ────────────────────────────────────────────────
-with open("missing_images.txt", "r") as f:
-    missing_images_raw = [ln.strip() for ln in f]
+    qa_pairs = sample.get("qa_pair", [])
+    if not qa_pairs:
+        return out
+    if isinstance(qa_pairs, dict):
+        qa_pairs = [qa_pairs]
 
-missing_images = []
-pat = re.compile(r": (.*?) does not exist")
-for ln in missing_images_raw:
-    m = pat.search(ln)
-    if m and not os.path.exists(m.group(1)):
-        missing_images.append(m.group(1))
+    k = max(1, int(sampling_rate * len(qa_pairs)))
+    for idx in random.sample(range(len(qa_pairs)), k):
+        qa = qa_pairs[idx]
+
+        ex = {
+            "instruction": qa.get("q", ""),
+            "response"   : qa.get("a", "")
+        }
+        if img_paths:
+            ex["image"] = img_paths
+
+        out.append(ex)
+
+    return out
 
 
-# ────────────────────────────────────────────────
-# 3.  ❱❱  SPLIT-LOADER
-# ────────────────────────────────────────────────
-def load_split(pkl_path, missing, sampling_rate=0.30):
-    flattened, extra_keys_found = [], set()
+def load_parquet_image_dataset(dataset_dir: str) -> DatasetDict:
+    """
+    Loads a DatasetDict from a directory of split-based parquet files,
+    and casts the 'image' column to Sequence[Image].
+    """
+    split_files = {
+        split_file.replace("data_", "").replace(".parquet", ""): os.path.join(dataset_dir, split_file)
+        for split_file in os.listdir(dataset_dir)
+        if split_file.endswith(".parquet")
+    }
+
+    dataset_dict = load_dataset("parquet", data_files=split_files)
+
+    # Cast image column
+    for split in dataset_dict:
+        dataset_dict[split] = dataset_dict[split].cast_column("image", Sequence(Image(decode=True)))
+
+    return dataset_dict
+def save_dataset_as_parquet(dataset_dict, output_dir):
+    """
+    Save a DatasetDict to Parquet format without copying image files.
+
+    Args:
+        dataset_dict (DatasetDict): Hugging Face dataset with an "image" column (list or str).
+        output_dir (str): Destination directory where Parquet files will be stored.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    for split in dataset_dict:
+        parquet_path = os.path.join(output_dir, f"data_{split}.parquet")
+        dataset_dict[split].to_parquet(parquet_path)
+        print(f"✅ Saved split '{split}' to: {parquet_path}")
+
+# ─────────────────────  PARALLEL SPLIT LOADER  ───────────────
+
+def _unpack_and_flatten(s, missing, sampling_rate):
+    return _flatten_one_sample(s, missing, sampling_rate)
+
+def load_split_parallel(pkl_path, missing, sampling_rate=0.3):
+    print(f"⏳  Loading split: {os.path.basename(pkl_path)}")
 
     with open(pkl_path, "rb") as f:
-        data = pickle.load(f)
+        raw = pickle.load(f, encoding="latin1")
 
-    for sample in tqdm(data, desc=f"▸ {os.path.basename(pkl_path)}", unit="item"):
-        img_paths = sample.get("image_path", [])
-        if isinstance(img_paths, str):                 # normalize
-            img_paths = [img_paths]
+    flattened = []
 
-        if img_paths and any(p in missing for p in img_paths):
-            continue                                   # skip if ALL imgs missing
+    # Create a worker function with missing and sampling_rate frozen in
+    worker_fn = partial(_unpack_and_flatten, missing=missing, sampling_rate=sampling_rate)
 
-        qa_pairs = sample.get("qa_pair", [])
-        if not qa_pairs:
-            continue
+    with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        results = executor.map(worker_fn, raw, chunksize=CHUNKSIZE)
 
-        if isinstance(qa_pairs, dict):                 # ensure list
-            qa_pairs = [qa_pairs]
+        # Wrap the iterator with tqdm to show progress
+        for ex_list in tqdm(results, total=len(raw), desc=f"▸ {os.path.basename(pkl_path)}"):
+            flattened.extend(ex_list)
 
-        k = max(1, int(sampling_rate * len(qa_pairs)))
-        for idx in random.sample(range(len(qa_pairs)), k):
-            qa = qa_pairs[idx]
-
-            ex = {
-                "instruction": qa.get("q", ""),
-                "response"   : qa.get("a", "")
-            }
-            if img_paths:
-                ex["image"] = img_paths
-
-            # pull through any additional fields you listed
-            for key in EXTRA_QA_KEYS:
-                if key in qa:
-                    ex[key] = sample[key]
-
-            flattened.append(ex)
-
-    # ── Build the Features dynamically ──────────────────────────
-    feat_dict = {
+    feat = Features({
         "instruction": Value("string"),
-        "response"   : Value("string"),
-        "image"      : Sequence(Image())               # can be empty / missing
+        "response": Value("string"),
+        "image": Sequence(Image())
+    })
+
+    del raw
+    gc.collect()
+
+    return Dataset.from_list(flattened, features=feat)
+if __name__ == "__main__":
+
+    # ─────────────────────────  CONFIG  ──────────────────────────
+    SEED = 42
+    random.seed(SEED)
+    MAX_WORKERS = 32
+    CHUNKSIZE = 512
+    SAMPLING_QA = 0.01
+
+    data_dir = "data_chexinstruct/"
+    pickle_splits = {
+            "train": os.path.join(data_dir, "data_train_chexinstruct.pkl"),
+            "val" : os.path.join(data_dir, "data_val_chexinstruct.pkl"),
+            "test": os.path.join(data_dir, "data_test_chexinstruct.pkl")
     }
-    for k in extra_keys_found:
-        feat_dict[k] = Value("string")
 
-    return Dataset.from_list(flattened, features=Features(feat_dict))
+    # ─────────────────────  MISSING IMAGES  ──────────────────────
+    pat = re.compile(r": (.*?) does not exist")
+    with open("missing_images.txt") as fh:
+        missing_images = [
+                m.group(1) for ln in fh
+                if (m := pat.search(ln)) and not os.path.exists(m.group(1))
+        ]
+    print("Starting dataset creation...")
 
-# ────────────────────────────────────────────────
-# 4.  ❱❱  BUILD DATASETDICT
-# ────────────────────────────────────────────────
-dataset = DatasetDict({
-    split: load_split(path, missing_images)
-    for split, path in pickle_splits.items()
-})
+    # ─────────────────────  LOAD ALL SPLITS  ─────────────────────
+    dataset_dict = {
+    split_name: load_split_parallel(pkl_path, missing_images)
+    for split_name, pkl_path in pickle_splits.items()
+    }
 
-print(dataset)
-print(dataset["train"][0])          # quick sanity-check
+    dataset = DatasetDict(dataset_dict)
 
-# ────────────────────────────────────────────────
-# 5.  ❱❱  SAVE TO DISK
-# ────────────────────────────────────────────────
-cache_dir = os.path.join(data_dir, "hf_cache")
-os.makedirs(cache_dir, exist_ok=True)
-dataset.save_to_disk(cache_dir)
-print(f"✅  Dataset cached at: {cache_dir}")
+    output_dir = "data_chexinstruct/hf_parquet"
+    save_dataset_as_parquet(dataset_dict, output_dir)
+
+    # ─────────────────────  SAVE TO DISK  ────────────────────────
+    print(f"✅ Dataset saved to: {output_dir}")
+    print("Dataset creation completed successfully.")
+    print("You can now load it with `load_dataset` from the `datasets` library.")
+    print("Example usage:")
+    print(f"```python\n"
+          f"from datasets import load_dataset\n"
+          f"dataset = load_dataset('path/to/{output_dir}')\n"
+          f"```")
+    loaded_dict = load_parquet_image_dataset(output_dir)

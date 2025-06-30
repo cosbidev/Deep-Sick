@@ -4,44 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked">
-      <change afterPath="$PROJECT_DIR$/src/dataset/ChexInstruct.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/dataset/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/INDEX.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/ds_config_zero3.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/finetune.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/RRG/finetune.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/ds_config_zero3.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/finetune.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/radllama/finetune.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/models/util_models.py" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA.">
+      <change afterPath="$PROJECT_DIR$/src/benchmark/USAGE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/benchmark/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/benchmark/benchmark_train_cost.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/CheXagent/data_chexinstruct/compile_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/datasets/ChexInstruct.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/datasets/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/RRG/INDEX.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/ds_config_zero3.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/finetune.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocess/chexpert/chexpert-plus/tutorials/radllama/finetune.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/RRG/INDEX.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/RRG/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/RRG/ds_config_zero3.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/RRG/finetune.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/RRG/finetune.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/radllama/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/radllama/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/radllama/ds_config_zero3.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/radllama/finetune.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/train/radllama/finetune.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,6 +50,7 @@
     "Python.analyzer_chexinstruct.executor": "Debug",
     "Python.brax.executor": "Debug",
     "Python.chexpert_public.executor": "Debug",
+    "Python.createHFDataset.executor": "Debug",
     "Python.demo_rexgradient160k.executor": "Debug",
     "Python.downloadBrax.executor": "Run",
     "Python.downloadMedmax.executor": "Debug",
@@ -135,7 +105,7 @@
       <command value="d" />
     </option>
   </component>
-  <component name="RunManager" selected="Python.analyzer_chexinstruct">
+  <component name="RunManager" selected="Python.createHFDataset">
     <configuration name="PreprocessBraxImages" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="Deep-Sick" />
       <option name="ENV_FILES" value="" />
@@ -197,6 +167,29 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/CheXagent/data_chexinstruct/dataset_processors/chexpert_public.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="createHFDataset" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="Deep-Sick" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -459,6 +452,7 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.createHFDataset" />
       <item itemvalue="Python.PreprocessBraxImages" />
       <item itemvalue="Python.chexpert_public" />
       <item itemvalue="Python.demo_rexgradient160k" />
@@ -542,7 +536,7 @@
       <workItem from="1750926163318" duration="16483000" />
       <workItem from="1750951224612" duration="81000" />
       <workItem from="1750951322083" duration="3191000" />
-      <workItem from="1751010406863" duration="32982000" />
+      <workItem from="1751010406863" duration="47828000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -664,7 +658,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751019972532</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA.">
+      <option name="closed" value="true" />
+      <created>1751284922714</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1751284922714</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -697,7 +699,8 @@
     <MESSAGE value="[Preprocessing v2] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs." />
     <MESSAGE value="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
     <MESSAGE value="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
-    <option name="LAST_COMMIT_MESSAGE" value="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
+    <MESSAGE value="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA." />
+    <option name="LAST_COMMIT_MESSAGE" value="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -803,6 +806,7 @@
     <SUITE FILE_PATH="coverage/data_json$pipeline.coverage" NAME="pipeline Coverage Results" MODIFIED="1748605405026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/mimic-cxr/cxr_structurer" />
     <SUITE FILE_PATH="coverage/data_json$downloadBrax.coverage" NAME="downloadBrax Coverage Results" MODIFIED="1750062414941" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/download/brax" />
     <SUITE FILE_PATH="coverage/data_json$mimic_nle.coverage" NAME="mimic_nle Coverage Results" MODIFIED="1750871828942" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CheXagent/data_chexinstruct" />
+    <SUITE FILE_PATH="coverage/data_json$createHFDataset.coverage" NAME="createHFDataset Coverage Results" MODIFIED="1751297911464" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/data_json$PreprocessBraxImages.coverage" NAME="PreprocessBraxImages Coverage Results" MODIFIED="1750856198320" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/brax" />
     <SUITE FILE_PATH="coverage/data_json$downloadMedmax.coverage" NAME="downloadMedmax Coverage Results" MODIFIED="1748685234619" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/data_json$preprocessingImagesPadchest.coverage" NAME="preprocessingImagesPadchest Coverage Results" MODIFIED="1749051385607" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/preprocess/padchest" />
