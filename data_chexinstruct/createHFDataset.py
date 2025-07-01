@@ -4,6 +4,8 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 
+from src import save_dataset_as_parquet, load_parquet_image_dataset
+
 # ─────────────────────  SAMPLE FLATTENER  ────────────────────
 def _flatten_one_sample(*args):
     sample, missing, sampling_rate = args
@@ -38,38 +40,7 @@ def _flatten_one_sample(*args):
     return out
 
 
-def load_parquet_image_dataset(dataset_dir: str) -> DatasetDict:
-    """
-    Loads a DatasetDict from a directory of split-based parquet files,
-    and casts the 'image' column to Sequence[Image].
-    """
-    split_files = {
-        split_file.replace("data_", "").replace(".parquet", ""): os.path.join(dataset_dir, split_file)
-        for split_file in os.listdir(dataset_dir)
-        if split_file.endswith(".parquet")
-    }
 
-    dataset_dict = load_dataset("parquet", data_files=split_files)
-
-    # Cast image column
-    for split in dataset_dict:
-        dataset_dict[split] = dataset_dict[split].cast_column("image", Sequence(Image(decode=True)))
-
-    return dataset_dict
-def save_dataset_as_parquet(dataset_dict, output_dir):
-    """
-    Save a DatasetDict to Parquet format without copying image files.
-
-    Args:
-        dataset_dict (DatasetDict): Hugging Face dataset with an "image" column (list or str).
-        output_dir (str): Destination directory where Parquet files will be stored.
-    """
-    os.makedirs(output_dir, exist_ok=True)
-
-    for split in dataset_dict:
-        parquet_path = os.path.join(output_dir, f"data_{split}.parquet")
-        dataset_dict[split].to_parquet(parquet_path)
-        print(f"✅ Saved split '{split}' to: {parquet_path}")
 
 # ─────────────────────  PARALLEL SPLIT LOADER  ───────────────
 

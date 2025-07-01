@@ -4,13 +4,26 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA.">
-      <change afterPath="$PROJECT_DIR$/src/benchmark/USAGE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/benchmark/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/benchmark/benchmark_train_cost.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[ChexIns - Completed] Creation of the HF data for the fine-tuning of GEMMA. The save_to_disk function doesn't work properly, moved to parquet saving.">
+      <change afterPath="$PROJECT_DIR$/CheXagent/src/train/finetune_gemma.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/benchmark/to_del.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/benchmark/util_bench.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/dataset/util_data.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/distributed/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/evaluate/utll_eval.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mimic-nle/extract_mimic_nle.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/mimic-nle/extract_mimic_nle.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mimic-nle/mimic-nle/query/dev-query.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mimic-nle/mimic-nle/query/test-query.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mimic-nle/mimic-nle/query/train-query.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mimic-nle/utils/preprocess_mimic.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/mimic-nle/utils/preprocess_mimic.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/benchmark/USAGE.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/benchmark/USAGE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/benchmark/benchmark_train_cost.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/benchmark/benchmark_train_cost.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataset/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/evaluate/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/evaluate/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/util_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/util_models.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,7 +49,7 @@
   &quot;associatedIndex&quot;: 0
 }</component>
   <component name="ProjectId" id="2x8Xx15wIO5pyTUGGrrOQ9XVCo8" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+  <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
   </component>
   <component name="ProjectViewState">
@@ -80,7 +93,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings",
+    "settings.editor.selected.configurable": "com.github.copilot.settings.ApplicationConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -481,8 +494,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.19416.19" />
-        <option value="bundled-python-sdk-337b0a7a993a-2767605e8bc2-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.19416.19" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
+        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
       </set>
     </attachedChunks>
   </component>
@@ -536,7 +549,10 @@
       <workItem from="1750926163318" duration="16483000" />
       <workItem from="1750951224612" duration="81000" />
       <workItem from="1750951322083" duration="3191000" />
-      <workItem from="1751010406863" duration="47828000" />
+      <workItem from="1751010406863" duration="48183000" />
+      <workItem from="1751355622400" duration="650000" />
+      <workItem from="1751356597958" duration="21000" />
+      <workItem from="1751356632066" duration="15127000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -666,7 +682,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751284922714</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="[ChexIns - Completed] Creation of the HF data for the fine-tuning of GEMMA. The save_to_disk function doesn't work properly, moved to parquet saving.">
+      <option name="closed" value="true" />
+      <created>1751300813262</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1751300813262</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -677,7 +701,19 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="roots">
+                    <value>
+                      <list>
+                        <option value="$PROJECT_DIR$" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -700,7 +736,8 @@
     <MESSAGE value="[Preprocessing v3] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
     <MESSAGE value="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
     <MESSAGE value="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA." />
-    <option name="LAST_COMMIT_MESSAGE" value="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA." />
+    <MESSAGE value="[ChexIns - Completed] Creation of the HF data for the fine-tuning of GEMMA. The save_to_disk function doesn't work properly, moved to parquet saving." />
+    <option name="LAST_COMMIT_MESSAGE" value="[ChexIns - Completed] Creation of the HF data for the fine-tuning of GEMMA. The save_to_disk function doesn't work properly, moved to parquet saving." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
