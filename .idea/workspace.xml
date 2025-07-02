@@ -4,26 +4,26 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[ChexIns - Completed] Creation of the HF data for the fine-tuning of GEMMA. The save_to_disk function doesn't work properly, moved to parquet saving.">
-      <change afterPath="$PROJECT_DIR$/CheXagent/src/train/finetune_gemma.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/benchmark/to_del.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/benchmark/util_bench.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/dataset/util_data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/distributed/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/evaluate/utll_eval.py" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[ChexIns - Benchmarking HF models] Dataset created successfully, a part is missing about the benchmark_train_cost.py that need to be completed for the bench of VLMs.">
+      <change afterPath="$PROJECT_DIR$/src/benchmark/benchmark_LLM.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/benchmark/benchmark_VLM.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/evaluate/util_eval.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/BLIP.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/LLaVA1_5.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/PaliGemma.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/Qwen2_5VL.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/VisionLanguage.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mimic-nle/extract_mimic_nle.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/mimic-nle/extract_mimic_nle.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mimic-nle/mimic-nle/query/dev-query.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mimic-nle/mimic-nle/query/test-query.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mimic-nle/mimic-nle/query/train-query.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mimic-nle/utils/preprocess_mimic.py" beforeDir="false" afterPath="$PROJECT_DIR$/data/mimic-nle/utils/preprocess_mimic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/benchmark/USAGE.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/benchmark/USAGE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/benchmark_train_cost.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/benchmark/benchmark_train_cost.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/dataset/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/benchmark/benchmark_train_cost.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/benchmark/to_del.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/benchmark/to_del.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataset/util_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/util_data.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/evaluate/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/evaluate/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/evaluate/utll_eval.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/util_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/util_models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocess/chestxray14/preprocessImagesCxr14.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,47 +56,47 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
-    "Python.PreprocessBraxImages.executor": "Debug",
-    "Python.analyzer_chexinstruct.executor": "Debug",
-    "Python.brax.executor": "Debug",
-    "Python.chexpert_public.executor": "Debug",
-    "Python.createHFDataset.executor": "Debug",
-    "Python.demo_rexgradient160k.executor": "Debug",
-    "Python.downloadBrax.executor": "Run",
-    "Python.downloadMedmax.executor": "Debug",
-    "Python.extract_mimic_nle.executor": "Debug",
-    "Python.mimic_cxr.executor": "Debug",
-    "Python.mimic_cxr_vqa.executor": "Debug",
-    "Python.mimic_nle.executor": "Run",
-    "Python.ms_cxr.executor": "Debug",
-    "Python.openi.executor": "Debug",
-    "Python.padchest_preprocessing.executor": "Run",
-    "Python.parallel.executor": "Debug",
-    "Python.pipeline.executor": "Debug",
-    "Python.preprocessReports.executor": "Debug",
-    "Python.preprocessingImagesPadchest.executor": "Debug",
-    "Python.rex_gradient.executor": "Run",
-    "Python.siim.executor": "Debug",
-    "Python.splitFileCreation.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
-    "WebServerToolWindowPanel.toolwindow.show.date": "false",
-    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
-    "WebServerToolWindowPanel.toolwindow.show.size": "false",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/src/train",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.github.copilot.settings.ApplicationConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
+    &quot;Python.PreprocessBraxImages.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.analyzer_chexinstruct.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.brax.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.chexpert_public.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.createHFDataset.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.demo_rexgradient160k.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.downloadBrax.executor&quot;: &quot;Run&quot;,
+    &quot;Python.downloadMedmax.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.extract_mimic_nle.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.mimic_cxr.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.mimic_cxr_vqa.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.mimic_nle.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ms_cxr.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.openi.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.padchest_preprocessing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.parallel.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.pipeline.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.preprocessReports.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.preprocessingImagesPadchest.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.rex_gradient.executor&quot;: &quot;Run&quot;,
+    &quot;Python.siim.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.splitFileCreation.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/src/train&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.github.copilot.settings.ApplicationConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/train" />
@@ -552,7 +552,9 @@
       <workItem from="1751010406863" duration="48183000" />
       <workItem from="1751355622400" duration="650000" />
       <workItem from="1751356597958" duration="21000" />
-      <workItem from="1751356632066" duration="15127000" />
+      <workItem from="1751356632066" duration="18027000" />
+      <workItem from="1751385210353" duration="2797000" />
+      <workItem from="1751443356321" duration="7063000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -690,7 +692,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751300813262</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="[ChexIns - Benchmarking HF models] Dataset created successfully, a part is missing about the benchmark_train_cost.py that need to be completed for the bench of VLMs.">
+      <option name="closed" value="true" />
+      <created>1751382211860</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1751382211860</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -737,7 +747,8 @@
     <MESSAGE value="[Preprocessing v4] The compile_chexinstruct.py has produced the first complete dataset. The compilation still have some bugs, unchecked" />
     <MESSAGE value="[ChexIns] Creation of the HF data for the fine-tuning of GEMMA." />
     <MESSAGE value="[ChexIns - Completed] Creation of the HF data for the fine-tuning of GEMMA. The save_to_disk function doesn't work properly, moved to parquet saving." />
-    <option name="LAST_COMMIT_MESSAGE" value="[ChexIns - Completed] Creation of the HF data for the fine-tuning of GEMMA. The save_to_disk function doesn't work properly, moved to parquet saving." />
+    <MESSAGE value="[ChexIns - Benchmarking HF models] Dataset created successfully, a part is missing about the benchmark_train_cost.py that need to be completed for the bench of VLMs." />
+    <option name="LAST_COMMIT_MESSAGE" value="[ChexIns - Benchmarking HF models] Dataset created successfully, a part is missing about the benchmark_train_cost.py that need to be completed for the bench of VLMs." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -824,6 +835,11 @@
           <url>file://$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py</url>
           <line>16</line>
           <option name="timeStamp" value="264" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/test.py</url>
+          <line>17</line>
+          <option name="timeStamp" value="267" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

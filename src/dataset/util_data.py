@@ -53,6 +53,22 @@ def image_preproc(img_size: int=224) -> T.Compose:
 
 
 
+def get_text_column(dataset):
+    """Find the text column in dataset"""
+    text_candidates = ["text", "content", "sentence", "review", "comment", "document"]
+
+    for col in text_candidates:
+        if col in dataset.features:
+            return col
+
+    # Look for any string column
+    for col_name, feature in dataset.features.items():
+        if hasattr(feature, 'dtype') and feature.dtype == "string":
+            return col_name
+
+    raise ValueError("No text column found in dataset")
+
+
 class SimpleCollator:
     """Simple collator that can be pickled"""
 
@@ -77,6 +93,6 @@ class SimpleCollator:
                 result.update(self.tokenizer.pad(text_batch, return_tensors="pt", padding=True))
 
             if self.has_images:
-                result["pixel_values"] = torch.stack([item["pixel_values"] for item in batch])
+                result["pixel_values"] = torch.stack([torch.Tensor(item["pixel_values"]) for item in batch])
 
             return result

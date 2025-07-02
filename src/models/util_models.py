@@ -9,6 +9,17 @@ def est_flops(n_params, batch_tokens):
     # Backward: 4 * n_params * batch_tokens (gradient computation)
     return 6 * n_params * batch_tokens
 
+def est_vlm_flops(n_params, batch_size, image_tokens, text_tokens):
+    """Estimate FLOPs for VLM forward + backward pass"""
+    # VLM combines vision and language processing
+    # Vision forward: 2 * vision_params * batch_size * image_tokens
+    # Language forward: 2 * language_params * batch_size * text_tokens
+    # Cross-attention: 2 * cross_attn_params * batch_size * image_tokens * text_tokens
+    # Backward: ~4x forward cost
+    total_tokens = image_tokens + text_tokens + (image_tokens * text_tokens / 1000)  # Cross-attention approx
+    return 6 * n_params * batch_size * total_tokens
+
+
 
 def count_tokens_worker(args):
     """Worker function for parallel token counting"""
@@ -129,3 +140,4 @@ def count_tokens_sequential(tokenizer, dataset, text_column="text"):
     print(f"  - Average tokens per sample: {avg_tokens:.2f}")
 
     return total_tokens, valid_samples, avg_tokens
+

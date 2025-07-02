@@ -104,6 +104,7 @@ def preprocess_chestxray(args):
             print(f"Unidentified image error in image: {e!r}", file=sys.stderr)
 
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Preprocess the Padchest dataset')
     parser.add_argument('--data_path', type=str, default="./data/chestxray14",
