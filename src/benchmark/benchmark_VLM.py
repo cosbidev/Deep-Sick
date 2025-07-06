@@ -17,12 +17,10 @@ import sys
 sys.path.append('./')
 import numpy as np
 
-
-
-
 from peft import LoraConfig, get_peft_model, TaskType
 from src.models import count_trainable, est_vlm_flops
 from src.dataset import load_parquet_image_dataset, image_preproc
+from src.models import get_model
 from src.evaluate import estimate_vlm_memory_usage, find_optimal_vlm_batch_size
 from src.distributed import init_distributed, cleanup_distributed
 
@@ -64,94 +62,6 @@ VLM_CONFIGS = {
 
 
 
-class VLMCollator:
-    """Optimized collator for VLM training"""
-
-    def __init__(self, processor, model_family):
-        self.processor = processor
-        self.model_family = model_family
-
-    def __call__(self, batch):
-        # Extract images and texts from batch
-        images = []
-        texts = []
-
-        for item in batch:
-            if 'image' in item and item['image'] is not None:
-                images.append(item['image'])
-            if 'text' in item:
-                texts.append(item['text'])
-
-        # Process based on model family
-        if self.model_family == 'qwen25vl':
-            # Qwen-2.5VL uses conversation format
-            try:
-                # Convert to conversation format if needed
-                if images and texts:
-                    conversations = []
-                    for img, text in zip(images, texts):
-                        conv = [{
-                                "role"   : "user",
-                                "content": [
-                                        {"type": "image", "image": img},
-                                        {"type": "text", "text": text}
-                                ]
-                        }]
-                        conversations.append(conv)
-
-                    # Process with Qwen VL utils
-                    processed_texts = []
-                    all_image_inputs = []
-
-                    for conv in conversations:
-                        text = self.processor.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
-                        image_inputs, _ = process_vision_info(conv)
-                        processed_texts.append(text)
-                        all_image_inputs.extend(image_inputs if image_inputs else [])
-
-                    # Tokenize and process
-                    inputs = self.processor(
-                            text=processed_texts,
-                            images=all_image_inputs if all_image_inputs else None,
-                            return_tensors="pt",
-                            padding=True
-                    )
-                else:
-                    # Text only fallback
-                    inputs = self.processor(
-                            text=texts,
-                            return_tensors="pt",
-                            padding=True
-                    )
-
-            except Exception as e:
-                print(f"Qwen processing error: {e}, falling back to simple processing")
-                inputs = self.processor(
-                        text=texts,
-                        images=images if images else None,
-                        return_tensors="pt",
-                        padding=True
-                )
-
-        else:  # PaliGemma
-            try:
-                inputs = self.processor(
-                        text=texts,
-                        images=images if images else None,
-                        return_tensors="pt",
-                        padding=True
-                )
-            except Exception as e:
-                print(f"PaliGemma processing error: {e}")
-                # Create minimal inputs
-                inputs = {
-                        "input_ids"     : torch.tensor([[1, 2, 3]] * len(batch)),
-                        "attention_mask": torch.tensor([[1, 1, 1]] * len(batch))
-                }
-
-        return inputs
-
-
 def setup_vlm_model_and_processor(model_family, model_size, use_quantization=False, use_flash_attn=True):
     """Setup VLM model and processor with optimal configurations"""
 
@@ -184,7 +94,7 @@ def setup_vlm_model_and_processor(model_family, model_size, use_quantization=Fal
 
     # Load model
     print(f"Loading {model_name}...")
-    model = model_class.from_pretrained(model_name, **model_kwargs)
+    model = get_model(model_family=model_family, **model_kwargs)
 
     # Load processor
     processor_kwargs = {"trust_remote_code": True}
@@ -194,9 +104,16 @@ def setup_vlm_model_and_processor(model_family, model_size, use_quantization=Fal
                 "max_pixels": config['max_pixels']
         })
 
-    processor = AutoProcessor.from_pretrained(model_name, **processor_kwargs)
 
-    return model, processor, config
+    collator = get_collator(
+            model_family=model_family,
+            min_pixels=config.get('min_pixels'),
+            max_pixels=config.get('max_pixels'),
+            resolution=config.get('resolution', 224)  # Default to 224 for PaliGemma
+    )
+
+
+    return model, collator, config
 
 
 def setup_vlm_lora(model, config, lora_rank=16, lora_alpha=32, enable_vision_lora=True):
@@ -347,7 +264,7 @@ def run_vlm_benchmark(rank, world_size, args):
 
     # Create sample batch for benchmarking
     sample_batch_items = create_vlm_sample_batch(processor, args.model_family, args.batch_size)
-    collator = VLMCollator(processor, args.model_family)
+    collator = get_collator()
 
     # Setup training components
     optimizer = torch.optim.AdamW(

@@ -26,6 +26,7 @@ import torch.profiler
 
 disable_caching()
 
+
 def run(rank, world_size, args):
     use_ddp = args.mode == "ddp"
     device = torch.device(f"cuda:{rank}")

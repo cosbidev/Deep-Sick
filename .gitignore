@@ -9,3 +9,10 @@
 /data_chexinstruct/
 /git_guide/
 /missing_images.txt
+*.xml
+*.json
+*.csv
+*.tsv
+*.log
+*.pth
+/src/finetune/Tutorials/

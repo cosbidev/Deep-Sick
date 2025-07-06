@@ -2,8 +2,33 @@
 from typing import Dict, List, Any, Optional
 import torch
 from transformers import AutoProcessor
-from .VisionLanguage import VisionLanguageDataCollator
+from .VisionLanguage import VisionLanguageDataCollator, VisionLanguageModel
 from qwen_vl_utils import process_vision_info
+#from transformers import Qwen2_5VLForConditionalGeneration TODO find a solution the import of the model
+
+from typing import Any, Dict, List
+
+
+
+
+class Qwen25VLModel(VisionLanguageModel):
+    """
+    Base class for Qwen2.5-VL models
+    Handles vision-language tasks with Qwen2.5-VL-specific processing
+    """
+
+    def __init__(self, model_name: str, collator: VisionLanguageDataCollator, tokenizer: str = None, **kwargs):
+        """
+        Initialize Qwen2.5-VL model with specific collator and tokenizer
+        Args:
+            model_name: Name of the model
+            collator: Data collator for processing inputs
+            tokenizer: Optional tokenizer for text processing
+        """
+        super().__init__(model_name, collator, tokenizer)
+        self.tokenizer = tokenizer
+        self.model = Qwen2_5VLForConditionalGeneration.from_pretrained(model_name, **kwargs)
+
 
 
 class Qwen25VLCollator(VisionLanguageDataCollator):
@@ -14,11 +39,18 @@ class Qwen25VLCollator(VisionLanguageDataCollator):
 
     def __init__(
             self,
-            model_name: str = "Qwen/Qwen2.5-VL-7B-Instruct-AWQ",
+            dimension: str = "3b",
             min_pixels: Optional[int] = None,
             max_pixels: Optional[int] = None,
             max_length: int = 2048
             ):
+        assert dimension in ["3b", "7b"]
+
+        model_name_dict = {'3b' : 'Qwen/Qwen2.5-VL-3B-Instruct',
+                           '7b' : 'Qwen/Qwen2.5-VL-7B-Instruct'}
+        # Select model name based on dimension
+        model_name = model_name_dict[dimension]
+
 
         # Initialize processor with optional pixel constraints
         if min_pixels and max_pixels:
@@ -33,7 +65,9 @@ class Qwen25VLCollator(VisionLanguageDataCollator):
         super().__init__(processor, max_length=max_length)
         self.model_name = model_name
 
-    def _format_messages(self, example: Dict[str, Any]) -> List[Dict[str, Any]]:
+
+    @staticmethod
+    def _format_messages(example: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Convert example to Qwen2.5-VL message format"""
         messages = []
 
@@ -120,7 +154,8 @@ class Qwen25VLCollator(VisionLanguageDataCollator):
         return self._collate_tensors(processed_batch)
 
 
-    def _collate_tensors(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+    @staticmethod
+    def _collate_tensors(batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         """Collate tensors with proper padding"""
         collated = {}
 

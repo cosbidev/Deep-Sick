@@ -10,7 +10,37 @@ import base64
 from PIL import Image
 import io
 
-from .VisionLanguage import VisionLanguageDataCollator
+from .VisionLanguage import VisionLanguageDataCollator, VisionLanguageModel
+from transformers import (
+    AutoProcessor, PaliGemmaForConditionalGeneration
+)
+
+
+
+
+
+class PaliGemmaModel(VisionLanguageModel):
+    """
+    Base class for PaliGemma models
+    Handles vision-language tasks with PaliGemma-specific processing
+    """
+
+    def __init__(self, model_name: str, collator: VisionLanguageDataCollator, tokenizer: str = None, **kwargs):
+        """
+        Initialize PaliGemma model with specific collator and tokenizer
+        Args:
+            model_name:
+            collator:
+            tokenizer:
+            **kwargs:
+        """
+        super().__init__(model_name, collator, tokenizer)
+        self.tokenizer = tokenizer
+        self.model = PaliGemmaForConditionalGeneration.from_pretrained(model_name, **kwargs)
+
+
+
+
 
 
 
@@ -22,11 +52,16 @@ class PaliGemmaCollator(VisionLanguageDataCollator):
 
     def __init__(
             self,
-            model_name: str = "google/paligemma-3b-pt-224",
+            dimension: str = "3b",  # Default to 3B model
             max_length: int = 512,
             image_size: int = 224
             ):
 
+        model_name_dict = {
+                        '3b': 'google/paligemma2-3b-pt-224',
+                        '3b_mix': 'google/paligemma2-3b-mix-224'
+        }
+        model_name = model_name_dict[dimension]
         processor = AutoProcessor.from_pretrained(model_name)
         super().__init__(processor, max_length=max_length)
         self.model_name = model_name
@@ -98,70 +133,3 @@ class PaliGemmaCollator(VisionLanguageDataCollator):
             )
 
         return inputs
-
-
-class LLaVACollator(VisionLanguageDataCollator):
-    """
-    Data collator for LLaVA models
-    Handles conversation format with images
-    """
-
-    def __init__(
-            self,
-            model_name: str = "llava-hf/llava-1.5-7b-hf",
-            max_length: int = 2048
-            ):
-
-        processor = AutoProcessor.from_pretrained(model_name)
-        super().__init__(processor, max_length=max_length)
-        self.model_name = model_name
-
-    def _format_conversation(self, example: Dict[str, Any]) -> str:
-        """Format conversation for LLaVA"""
-        if "conversations" in example:
-            # Handle conversation format
-            conversation = ""
-            for turn in example["conversations"]:
-                role = turn.get("from", "user")
-                value = turn.get("value", "")
-                if role == "human":
-                    conversation += f"USER: {value}\n"
-                elif role == "gpt":
-                    conversation += f"ASSISTANT: {value}\n"
-            return conversation
-        else:
-            # Handle simple question-answer format
-            question = example.get("question", example.get("text", ""))
-            return f"USER: {question}\nASSISTANT:"
-
-    def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
-        """Process batch for LLaVA"""
-        texts = []
-        images = []
-
-        for example in batch:
-            # Format conversation
-            conversation = self._format_conversation(example)
-            texts.append(conversation)
-
-            # Handle image
-            if "image" in example:
-                img = example["image"]
-                if isinstance(img, str):
-                    img = Image.open(img)
-                images.append(img)
-            else:
-                images.append(None)
-
-        # Process with processor
-        inputs = self.processor(
-                text=texts,
-                images=images,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=self.max_length
-        )
-
-        return inputs
-

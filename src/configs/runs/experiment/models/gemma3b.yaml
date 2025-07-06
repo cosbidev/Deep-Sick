@@ -1,16 +1,20 @@
-backbone: MedMAE
+backbone: gemma3
+
+
 
 n_last_blocks: [1, 4]
 
 avgpools: [True, False]
 
 modules_target:
-  - qkv
-  - fc1
-  - fc2
+  - k_proj
+  - q_proj
+  - v_proj
 
 modules_target_same_shape:
-  - qkv
+  - k_proj
+  - q_proj
+  - v_proj
 
 feedforward_modules:
   - fc1

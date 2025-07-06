@@ -13,7 +13,6 @@ if __name__ == "__main__":
             max_pixels=1280 * 28 * 28
     )
 
-
     # Example batch
     batch = [
             {
