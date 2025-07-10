@@ -4,57 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Formatter, Benchmark, SFFT] New version of formatting v2">
-      <change afterPath="$PROJECT_DIR$/src/dataset/system_prompt.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/accelerated_chexinstruct_gemma.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/finetune.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune ] finetuning code for the gemma3 models.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data_chexinstruct/createHFDataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/chexinstruct/createHFDataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/bash/srun_command" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/srun_command.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/measure_memory_usage_VLM.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/measure_memory_usage_VLM.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/AFC.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/configs/runs/experiment/databases/CheXinstruct_findings.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/AFC_death.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/CAR.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/CoCross.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/JSRT.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/Lung1.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/MC.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/NY.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/NY_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/NY_all_icu.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/databases/NY_icu.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/eval/vitb14_pretrain.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/eval/vitg14_pretrain.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/eval/vitl14_pretrain.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/eval/vits14_pretrain.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/feature_tuning/IA3.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/feature_tuning/VeRA.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/feature_tuning/fitbit.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/feature_tuning/full.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/feature_tuning/no_tuning.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/full_finetuning.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/linear_probing_IA3_test_all.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/configs/runs/experiment/vanilla_vlm_lora.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/linear_probing_LoRa_8_test_all.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/paths/default.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/configs/runs/experiment/paths/default.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/paths/system/alvis.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/configs/runs/experiment/paths/system/alvis.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/paths/system/alvis_2.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/run/debug_run.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/run/default_run_2.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/run/extraction_run.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/configs/runs/experiment/run/short_run.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/dataset/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct_v2.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/dataset/util_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/util_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/Tutorials/fine-tune-2024-04/batch-size-memory-modeling-8B/measure_memory_usage_for_batch_size_optimizer_offload.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/Tutorials/fine-tune-2024-04/batch-size-memory-modeling-8B/measure_memory_usage_for_batch_size_optimizer_offload.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_gemma3_SFTT.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/Gemma3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/Gemma3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/LLaVA1_5.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/PaliGemma.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/VisionLanguage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/VisionLanguage.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/formatters.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/formatters.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/test.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -591,7 +548,7 @@
       <workItem from="1751792451907" duration="37686000" />
       <workItem from="1751961597866" duration="46789000" />
       <workItem from="1752132382252" duration="1821000" />
-      <workItem from="1752134613819" duration="3370000" />
+      <workItem from="1752134613819" duration="11658000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -753,7 +710,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751839677312</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="[Fine-tune ] finetuning code for the gemma3 models.">
+      <option name="closed" value="true" />
+      <created>1752138015078</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1752138015078</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -810,7 +775,8 @@
     <MESSAGE value="[ChexIns - Benchmarking HF models] Dataset created successfully, a part is missing about the benchmark_train_cost.py that need to be completed for the bench of VLMs." />
     <MESSAGE value="[ChexIns - Dataset] New classes for VLMs models, and new functions." />
     <MESSAGE value="[Formatter, Benchmark, SFFT] New version of formatting v2" />
-    <option name="LAST_COMMIT_MESSAGE" value="[Formatter, Benchmark, SFFT] New version of formatting v2" />
+    <MESSAGE value="[Fine-tune ] finetuning code for the gemma3 models." />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune ] finetuning code for the gemma3 models." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -917,6 +883,15 @@
           <url>file://$PROJECT_DIR$/src/finetune/finetune.py</url>
           <line>1</line>
           <option name="timeStamp" value="319" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/VisionLanguage.py</url>
+          <option name="timeStamp" value="320" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/finetune/finetune_accelerated.py</url>
+          <line>344</line>
+          <option name="timeStamp" value="321" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

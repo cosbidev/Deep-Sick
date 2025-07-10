@@ -1,3 +1,5 @@
+import io
+
 from .VisionLanguage import VisionLanguageDataCollator
 from transformers import AutoProcessor
 from typing import Any, Dict, List
@@ -23,34 +25,7 @@ def process_vision_info(messages: list[dict]) -> list[Image.Image]:
                     image_inputs.append(image.convert("RGB"))
     return image_inputs
 
-def collate_fn(examples):
-    texts = [processor.apply_chat_template(example["messages"], tokenize=False, add_generation_prompt=False).strip() for example in examples]
-    if "images" in examples[0]:  # single-image
-        images = [
-            [img.convert("RGB") for img in example["images"]]
-            for example in examples
-        ]
-    else:  # multi-image
-        images = [process_vision_info(example["messages"]) for example in examples]
 
-    # Tokenize the texts and process the images
-    batch = processor(
-        text=texts, images=images, return_tensors="pt", padding=True
-    )  # Encode texts and images into tensors
-
-    # The labels are the input_ids, and we mask the padding tokens in the loss computation
-    labels = batch["input_ids"].clone()  # Clone input IDs for labels
-    # Mask image tokens
-    image_token_id = [
-        processor.tokenizer.convert_tokens_to_ids(processor.tokenizer.special_tokens_map["boi_token"])
-    ]
-    # Mask tokens for not being used in the loss computation
-    labels[labels == processor.tokenizer.pad_token_id] = -100
-    labels[labels == image_token_id] = -100
-    labels[labels == 262144] = -100
-
-    batch["labels"] = labels
-    return batch  # Return the prepared batch
 class GemmaCollator(VisionLanguageDataCollator):
     """
     Data collator for LLaVA models
@@ -63,6 +38,8 @@ class GemmaCollator(VisionLanguageDataCollator):
             max_length: int = 2048,
             **kwargs: Any
     ):
+        # Initialize the Gemma collator with model ID and max length
+        self.system = False
 
         self.model_name = model_id
         processor = AutoProcessor.from_pretrained(model_id, **kwargs)
@@ -88,6 +65,47 @@ class GemmaCollator(VisionLanguageDataCollator):
             # Handle simple question-answer format
             question = example.get("question", example.get("text", ""))
             return f"USER: {question}\nASSISTANT:"
+
+    def collate_fn(self, examples):
+        # Remove the system prompt:
+        if not self.system:
+
+            examples = [example for example in examples if "system" not in example["messages"][0].get("role", "")]
+
+        texts = [self.processor.apply_chat_template(example["messages"], tokenize=False, add_generation_prompt=False).strip() for example in examples]
+        if "image" in examples[0]:  # single-image
+            images = [
+                    [img.convert("RGB") for img in example["image"]]
+                    for example in examples
+            ]
+        else:  # multi-image
+            images = [process_vision_info(example["messages"]) for example in examples]
+
+        # Tokenize the texts and process the images
+        batch = self.processor(
+                text=texts, images=images, return_tensors="pt", padding=True
+        )  # Encode texts and images into tensors
+
+        # The labels are the input_ids, and we mask the padding tokens in the loss computation
+        labels = batch["input_ids"].clone()  # Clone input IDs for labels
+        # Mask image tokens
+        image_token_id = [
+                self.processor.tokenizer.convert_tokens_to_ids(self.processor.tokenizer.special_tokens_map["boi_token"])
+        ]
+        # Mask tokens for not being used in the loss computation
+        # Remove The part related to the Question and System prompt
+
+        #labels[labels == self.processor.tokenizer.eos_token_id] = -100
+
+
+
+        labels[labels == self.processor.tokenizer.pad_token_id] = -100
+        labels[labels == image_token_id] = -100
+        labels[labels == 262144] = -100
+
+        batch["labels"] = labels
+        return batch  # Return the prepared batch
+
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         """Process batch for LLaVA"""
@@ -119,3 +137,6 @@ class GemmaCollator(VisionLanguageDataCollator):
         )
 
         return inputs
+
+
+
