@@ -1,7 +1,7 @@
 import os
 import torch
-from datasets import load_dataset, DatasetDict, Dataset, IterableDataset
-
+from datasets import load_dataset, DatasetDict, IterableDataset
+import PIL
 import torchvision.transforms as T
 
 __all__ = [
@@ -15,18 +15,74 @@ __all__ = [
 ]
 
 
+def has_valid_pil_images(examples, log_bad=None):
+    """
+    Validate that every PIL.Image in `example["image"]` truly decodes.
 
-def load_parquet_image_dataset(dataset_dir: str, skip_test=True) -> DatasetDict:
+    Parameters
+    ----------
+    example : dict
+        A single HF-Dataset row with an "image" key.
+        The value can be a PIL.Image or a list of PIL.Image objects.
+    log_bad : str | None
+        Path to a text file where failures are appended.
+
+    Returns
+    -------
+    bool
+        True  -> keep this example
+        False -> drop it
+    """
+    # if examples is None:
+    #     return False
+    # if examples['image'] is None:
+    #     return False
+    mask_list = []
+    for imgs in examples['image']:
+
+
+        for img in imgs:
+            if img == None:
+                mask_list.append(False)
+        try:
+            # no image, keep example (e.g. text-only)
+            if not isinstance(imgs, list):
+                imgs = [imgs]  # unify to list
+            # Force full pixel decode for every image.
+            for img in imgs:
+                img.load()  # raises OSError on real corruption
+        except Exception as e:
+            if log_bad is not None:
+                with open(log_bad, "a") as f:
+                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
+            mask_list.append(False)
+        except PIL.UnidentifiedImageError:
+            if log_bad is not None:
+                with open(log_bad, "a") as f:
+                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
+            mask_list.append(False)
+        except TypeError:
+            print(' Type error')
+            if log_bad is not None:
+                with open(log_bad, "a") as f:
+                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
+            mask_list.append(False)
+        mask_list.append(True)
+
+    return mask_list
+
+def load_parquet_image_dataset(dataset_dir: str, split_list: list = []) -> DatasetDict:
     """
     Loads a DatasetDict from a directory of split-based parquet files,
     and casts the 'image' column to Sequence[Image].
     """
+    split_files = {}
+    assert all([split in ["train", "val", "test"] for split in split_list])
 
-    split_files = {
-        split_file.replace("data_", "").replace(".parquet", ""): os.path.join(dataset_dir, split_file)
-        for split_file in os.listdir(dataset_dir)
-        if (split_file.endswith(".parquet")) and ("test" not in split_file if skip_test else True)
-    }
+    for split in split_list:
+        for split_file in os.listdir(dataset_dir):
+            if split in split_file and split_file.endswith(".parquet") :
+                split_files[split_file.replace("data_", "").replace(".parquet", "")] = os.path.join(dataset_dir, split_file)
 
     dataset_dict = load_dataset("parquet", data_files=split_files)
 
@@ -462,9 +518,6 @@ def train_on_responses_only(
             not isinstance(trainer.data_collator, DataCollatorForSeq2Seq):
         trainer.data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer)
 
-    # Check if all labels randomnly got masked to nothing - maybe wrong chat template?
-    from .training_utils import fix_zero_training_loss
-    fix_zero_training_loss(None, tokenizer, trainer.train_dataset)
     return trainer
 
 

@@ -1,19 +1,21 @@
 import argparse
 import sys
-
+import PIL
 from datasets import disable_caching
+
 sys.path.append('./')  # Ensure the src directory is in the path
 from src.dataset import load_parquet_image_dataset, save_dataset_as_parquet
 from src.models import (
-    data_format_gemma_conversation,
+    data_format_gemma_conversation_chexinstruct,
     data_format_qwen25vl_conversation,
     data_format_llava15_conversation
 )
 import multiprocessing as mp
 import psutil
+
 # Model formatting function mapping
 MODEL_FORMATTERS = {
-        'gemma'   : data_format_gemma_conversation,
+        'gemma'   : data_format_gemma_conversation_chexinstruct,
         'llava15' : data_format_llava15_conversation,
         'qwen25vl': data_format_qwen25vl_conversation,
 }
@@ -23,13 +25,17 @@ MODEL_FORMATTERS = {
 from pathlib import Path
 from functools import partial
 from PIL import ImageFile, Image
-ImageFile.LOAD_TRUNCATED_IMAGES = True     # let PIL load incomplete files
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True  # let PIL load incomplete files
 disable_caching()
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
             description='Format ChexInstruct dataset for different multimodal models',
             formatter_class=argparse.RawDescriptionHelpFormatter,
-            epilog="""
+            epilog=
+            """
 Examples:
   python format_chexinstruct.py --model gemma --input data_chexinstruct/hf_parquet --output data_chexinstruct/hf_parquet_gemma_format
   python format_chexinstruct.py --model llava15 --input data_chexinstruct/hf_parquet --output data_chexinstruct/hf_parquet_llava15_format
@@ -63,7 +69,7 @@ Examples:
             '--splits',
             type=str,
             nargs='+',
-            default=['train', 'val', 'test'],
+            default=[ 'val', 'test'], # 'train',
             help='Dataset splits to process (default: train val test)'
     )
 
@@ -76,6 +82,9 @@ Examples:
     return parser.parse_args()
 
 
+
+
+# ---------------------------------------------------------------------
 def validate_paths(input_path: str, output_path: str):
     """Validate input and output paths."""
     input_dir = Path(input_path)
@@ -86,7 +95,6 @@ def validate_paths(input_path: str, output_path: str):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     return input_dir, output_dir
-
 
 
 def get_optimal_num_proc():
@@ -112,7 +120,7 @@ def get_optimal_num_proc():
 # ---------------------------------------------------------------------
 # ⬇️  UTILITIES
 # ---------------------------------------------------------------------
-def has_valid_pil_images(example, log_bad=None):
+def has_valid_pil_images(examples, log_bad=None):
     """
     Validate that every PIL.Image in `example["image"]` truly decodes.
 
@@ -130,33 +138,54 @@ def has_valid_pil_images(example, log_bad=None):
         True  -> keep this example
         False -> drop it
     """
-    imgs = example["image"]
-    if imgs is None:
-        return True                        # no image, keep example (e.g. text-only)
-    if not isinstance(imgs, list):
-        imgs = [imgs]                       # unify to list
+    # if examples is None:
+    #     return False
+    # if examples['image'] is None:
+    #     return False
+    mask_list = []
+    for imgs in examples['image']:
 
-    try:
-        # Force full pixel decode for every image.
+
         for img in imgs:
-            img.load()                      # raises OSError on real corruption
-        return True
-    
-    except Exception as e:
-        if log_bad is not None:
-            with open(log_bad, "a") as f:
-                f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
-        return False
+            if img == None:
+                mask_list.append(False)
+        try:
+            # no image, keep example (e.g. text-only)
+            if not isinstance(imgs, list):
+                imgs = [imgs]  # unify to list
+            # Force full pixel decode for every image.
+            for img in imgs:
+                img.load()  # raises OSError on real corruption
+        except Exception as e:
+            if log_bad is not None:
+                with open(log_bad, "a") as f:
+                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
+            mask_list.append(False)
+        except PIL.UnidentifiedImageError:
+            if log_bad is not None:
+                with open(log_bad, "a") as f:
+                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
+            mask_list.append(False)
+        except TypeError:
+            print(' Type error')
+            if log_bad is not None:
+                with open(log_bad, "a") as f:
+                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
+            mask_list.append(False)
+        mask_list.append(True)
 
+    return mask_list
 
 # ---------------------------------------------------------------------
 # ⬇️  MAIN PIPELINE (PATCHED)
 # ---------------------------------------------------------------------
-def format_dataset(model_name: str,
-                   input_path: str,
-                   output_path: str,
-                   splits: list,
-                   verbose: bool = False):
+def format_dataset(
+        model_name: str,
+        input_path: str,
+        output_path: str,
+        splits: list,
+        verbose: bool = False
+):
 
     num_proc = get_optimal_num_proc()
     formatter = MODEL_FORMATTERS[model_name]
@@ -168,7 +197,7 @@ def format_dataset(model_name: str,
         print(f"Loading ChexInstruct dataset from: {input_path}")
 
     chexinstruct_data = load_parquet_image_dataset(input_path)
-    formatted_data    = {}
+    formatted_data = {}
 
     for split in splits:
         if split not in chexinstruct_data:
@@ -184,22 +213,26 @@ def format_dataset(model_name: str,
         # 1️⃣  PRE-FILTER  (multiprocess)
         # -----------------------------------------------------------------
         filter_fn = partial(has_valid_pil_images, log_bad=log_path)
+        # ds.filter(lambda x: x is not None,   # drop examples the formatter skipped
+        #          desc="Removing failed samples")
         ds = ds.filter(
-            filter_fn,
-            num_proc=num_proc,          # multiprocess filtering
-            desc="Filtering corrupted images"
+                filter_fn,
+                batch_size=256,
+                batched=True,
+                num_proc=num_proc,  # multiprocess filtering
+                desc="Filtering corrupted images"
         )
 
         # -----------------------------------------------------------------
         # 2️⃣  MAP  ➜  MODEL-SPECIFIC FORMAT
         # -----------------------------------------------------------------
         ds = ds.map(
-            formatter,
-            num_proc=num_proc,
-            batch_size=256,
-            desc="Formatting dataset"
-        ).filter(lambda x: x is not None,   # drop examples the formatter skipped
-                 desc="Removing failed samples")
+                formatter,
+                batch_size=256,
+                batched=True,
+                num_proc=1,
+                desc="Formatting dataset"
+        )
 
         formatted_data[split] = ds
         if verbose:
@@ -213,20 +246,18 @@ def format_dataset(model_name: str,
     print(f"📝 Corrupted images (if any) listed in: {log_path}")
 
     return formatted_data
+
+
 def main():
     args = parse_arguments()
 
-    try:
-        format_dataset(
-                model_name=args.model,
-                input_path=args.input,
-                output_path=args.output,
-                splits=args.splits,
-                verbose=args.verbose
-        )
-    except Exception as e:
-        print(f"❌ Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    format_dataset(
+            model_name=args.model,
+            input_path=args.input,
+            output_path=args.output,
+            splits=args.splits,
+            verbose=args.verbose
+    )
 
 
 if __name__ == "__main__":

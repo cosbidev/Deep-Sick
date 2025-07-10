@@ -1,0 +1,5 @@
+dataset_name: ChexInstruct_findings
+img_size: 512
+# path of img directory
+data_dir: data_chexinstruct/hf_parquet_gemma_format/gemma_findings
+

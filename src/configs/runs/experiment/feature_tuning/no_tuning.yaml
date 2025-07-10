@@ -1,7 +1,0 @@
-peft: null
-
-fine_tune: False
-
-backbone_learning_rate: 1e-4
-
-tuning_name: '_none'
