@@ -4,12 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune ] finetuning code for the gemma3 models.">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune ] removing Unsloth collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes.">
+      <change afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataset/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/dataset/util_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/util_data.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/Gemma3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/Gemma3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/LLaVA1_5.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/PaliGemma.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/VisionLanguage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/VisionLanguage.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
     </list>
@@ -548,7 +548,8 @@
       <workItem from="1751792451907" duration="37686000" />
       <workItem from="1751961597866" duration="46789000" />
       <workItem from="1752132382252" duration="1821000" />
-      <workItem from="1752134613819" duration="11658000" />
+      <workItem from="1752134613819" duration="22080000" />
+      <workItem from="1752303656352" duration="15247000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -718,7 +719,15 @@
       <option name="project" value="LOCAL" />
       <updated>1752138015078</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="[Fine-tune ] removing Unsloth collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes.">
+      <option name="closed" value="true" />
+      <created>1752164156716</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1752164156716</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -776,7 +785,8 @@
     <MESSAGE value="[ChexIns - Dataset] New classes for VLMs models, and new functions." />
     <MESSAGE value="[Formatter, Benchmark, SFFT] New version of formatting v2" />
     <MESSAGE value="[Fine-tune ] finetuning code for the gemma3 models." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune ] finetuning code for the gemma3 models." />
+    <MESSAGE value="[Fine-tune ] removing Unsloth collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes." />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune ] removing Unsloth collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -885,13 +895,9 @@
           <option name="timeStamp" value="319" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/models/VisionLanguage.py</url>
-          <option name="timeStamp" value="320" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/finetune/finetune_accelerated.py</url>
-          <line>344</line>
-          <option name="timeStamp" value="321" />
+          <line>490</line>
+          <option name="timeStamp" value="325" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

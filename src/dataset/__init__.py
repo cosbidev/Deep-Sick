@@ -1,4 +1,4 @@
-from .util_data import load_parquet_image_dataset, save_dataset_as_parquet, image_preproc, SimpleCollator, train_on_responses_only
+from .util_data import load_parquet_image_dataset, save_dataset_as_parquet, image_preproc, SimpleCollator
 from .formatters import data_format_llava15_conversation, data_format_qwen25vl_conversation, data_format_gemma_conversation_chexinstruct
 from .system_prompt import get_random_prompt_for_task, get_prompt_for_task
 

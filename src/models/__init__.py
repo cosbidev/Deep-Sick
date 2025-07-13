@@ -1,5 +1,5 @@
 from .util_models import count_trainable, est_flops, count_tokens, count_tokens_worker, est_vlm_flops
-from .VisionLanguage import VisionLanguageDataCollator, UnslothVisionDataCollator
+from .VisionLanguage import VisionLanguageDataCollator
 from .Qwen2_5VL import Qwen25VLCollator, Qwen25VLModel
 from .Gemma3 import GemmaCollator
 
@@ -22,8 +22,6 @@ def get_collator(model_id, **kwargs) -> VisionLanguageDataCollator:
     elif "gemma" in model_name_lower:
         print("|| Using Gemma collator ...")
         return GemmaCollator(**kwargs)
-    elif "unsloth" in model_name_lower:
-        return UnslothVisionDataCollator(**kwargs)
     else:
         raise ValueError(f"No collator available for model: {model_id}")
 
