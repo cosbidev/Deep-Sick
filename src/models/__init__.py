@@ -1,7 +1,8 @@
-from .util_models import count_trainable, est_flops, count_tokens, count_tokens_worker, est_vlm_flops
+from .util_models import est_flops, count_tokens, count_tokens_worker, est_vlm_flops, get_model_stats
 from .VisionLanguage import VisionLanguageDataCollator
 from .Qwen2_5VL import Qwen25VLCollator, Qwen25VLModel
 from .Gemma3 import GemmaCollator
+
 
 # Factory function to model appropriate collator
 def get_collator(model_id, **kwargs) -> VisionLanguageDataCollator:

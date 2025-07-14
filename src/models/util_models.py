@@ -1,7 +1,6 @@
 from tqdm import tqdm
-def count_trainable(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
+import torch
+import gc
 
 def est_flops(n_params, batch_tokens):
     """Estimate FLOPs for forward + backward pass"""
@@ -140,4 +139,37 @@ def count_tokens_sequential(tokenizer, dataset, text_column="text"):
     print(f"  - Average tokens per sample: {avg_tokens:.2f}")
 
     return total_tokens, valid_samples, avg_tokens
+
+
+def get_model_stats(model):
+    # Garbage collection per avere una lettura pulita della memoria
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    device = next(model.parameters()).device
+    # Calcolo dei parametri totali e trainabili
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    trainable_fraction = trainable_params / total_params if total_params > 0 else 0.0
+
+    # Formato: dtype principale
+    dtypes = set(p.dtype for p in model.parameters())
+    dtype_str = ", ".join(str(d) for d in dtypes)
+
+    # Misurazione della memoria VRAM in uso
+    vram_used_gb = torch.cuda.memory_allocated(device) / (1024**3)
+
+    print(f"--- Model Stats ---")
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,} ({trainable_fraction:.2%})")
+    print(f"Parameter dtype(s): {dtype_str}")
+    print(f"VRAM allocated: {vram_used_gb:.2f} GB")
+
+    return {
+        "total_params": total_params,
+        "trainable_params": trainable_params,
+        "trainable_fraction": trainable_fraction,
+        "dtype": dtype_str,
+        "vram_gb": vram_used_gb,
+    }
 

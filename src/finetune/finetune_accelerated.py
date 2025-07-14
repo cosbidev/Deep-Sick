@@ -45,13 +45,13 @@ from transformers import MODEL_MAPPING,  SchedulerType
 MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
-from accelerate import Accelerator, DistributedType
+from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import DummyOptim, DummyScheduler, set_seed
 
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator
-from util_finetune import group_texts, evaluate
+from util_finetune import evaluate
 
 os.environ["HF_TOKEN"] = "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"
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
@@ -63,6 +63,7 @@ os.environ["HF_TOKEN"] = "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"
 CACHE_DIR = os.path.join(os.getcwd(), "hf_models_cache")
 logger = get_logger(__name__)
 hf_token = os.environ.get("HF_TOKEN","")
+
 
 
 
@@ -180,6 +181,12 @@ def parse_args():
         help="Whether the various states should be saved at the end of every n steps, or 'epoch' for each epoch.",
     )
     parser.add_argument(
+            "--save_every_n_epochs",
+            type=int,
+            default=None,
+            help="Save a model checkpoint every n epochs (in addition to other checkpointing logic)."
+    )
+    parser.add_argument(
         "--resume_from_checkpoint",
         type=str,
         default=None,
@@ -272,6 +279,10 @@ def main():
     config = AutoConfig.from_pretrained(args.model_name_or_path)
 
 
+
+
+
+
     if args.model_name_or_path:
         # Get the text column names for the training and evaluation datasets
         collator = get_collator(model_id=args.model_name_or_path,
@@ -296,6 +307,9 @@ def main():
     # model.resize_token_embeddings(len(tokenizer))
     # Preprocessing the datasets.
     # First we tokenize all the texts.
+
+
+
 
 
     with accelerator.main_process_first():
@@ -442,6 +456,8 @@ def main():
     if checkpointing_steps is not None and checkpointing_steps.isdigit():
         checkpointing_steps = int(checkpointing_steps)
 
+
+
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
     if args.with_tracking:
@@ -539,6 +555,7 @@ def main():
         perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator, eval_dataset)
         logger.info(f"epoch {epoch}: perplexity: {perplexity} eval_loss: {eval_loss}")
 
+
         if args.with_tracking:
             accelerator.log(
                 {
@@ -550,6 +567,15 @@ def main():
                 },
                 step=completed_steps,
             )
+
+        # Save every N epochs (if specified)
+        if args.save_every_n_epochs is not None:
+            if (epoch + 1) % args.save_every_n_epochs == 0:
+                save_path = os.path.join(args.output_dir, f"epoch_every_{epoch}")
+                accelerator.save_state(save_path)
+                accelerator.print(f"Saved checkpoint every_n_epochs at: {save_path}")
+
+
 
         if isinstance(checkpointing_steps, str) and checkpointing_steps == "epoch":
             accelerator.save_state(os.path.join(args.output_dir, f"epoch_{epoch}"))
