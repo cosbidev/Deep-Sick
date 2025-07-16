@@ -1,14 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -A NAISS2024-5-577
-#SBATCH -p alvis
-#SBATCH --gpus-per-node=A100fat:4
-#SBATCH -N 4
-#SBATCH -t 7-00:00:00
-#SBATCH -J "Linear Probing Training"
-#SBATCH --error=LINEAR_job_%J.err
-#SBATCH --output=LINEAR_out_%J.out
-#SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=ruffin02@outlook.it
+# Set environment variables
 
 # Move to project directory
 cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick

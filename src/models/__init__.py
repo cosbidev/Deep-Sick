@@ -2,6 +2,7 @@ from .util_models import est_flops, count_tokens, count_tokens_worker, est_vlm_f
 from .VisionLanguage import VisionLanguageDataCollator
 from .Qwen2_5VL import Qwen25VLCollator, Qwen25VLModel
 from .Gemma3 import GemmaCollator
+from .peft import ModelParameterManager
 
 
 # Factory function to model appropriate collator
@@ -42,3 +43,56 @@ def get_model(model_id: str, **kwargs):
     if "qwen25vl" in model_name_lower:
         print("|| Instancing Qwen25VL ...")
         return Qwen25VLModel(model_id, get_collator(model_id, **kwargs), **kwargs)
+
+
+# Esempio di utilizzo:
+def  configure_model_for_training(
+        model,
+        strategy: str = "lora_gaussian",
+        **kwargs
+):
+    """
+    Funzione di convenienza per configurare un modello per il training.
+
+    Args:
+        model: Il modello da configurare
+        strategy: Strategia di fine-tuning:
+            - "lora_standard": LoRA con inizializzazione Kaiming-uniform
+            - "lora_gaussian": LoRA con inizializzazione Gaussiana
+            - "lora_pissa": LoRA con inizializzazione PiSSA
+            - "lora_pissa_fast": LoRA con inizializzazione PiSSA veloce
+            - "lora_olora": LoRA con inizializzazione OLoRA
+            - "dora": DoRA (Weight-Decomposed LoRA)
+            - "dora_rslora": DoRA con rank-stabilized LoRA
+            - "qlora": QLoRA-style (all-linear)
+            - "manual_adapter": Adapter manuale (sblocca layer specifici)
+            - "modules_to_save": LoRA con moduli aggiuntivi da salvare
+        **kwargs: Parametri aggiuntivi per la configurazione
+
+    Returns:
+        Modello configurato
+    """
+    manager = ModelParameterManager(model, **kwargs)
+
+    if strategy == "lora_standard":
+        return manager.apply_lora_standard(model, **kwargs)
+    elif strategy == "lora_gaussian":
+        return manager.apply_lora_gaussian(model, **kwargs)
+    elif strategy == "lora_pissa":
+        return manager.apply_lora_pissa(model, fast_svd=False, **kwargs)
+    elif strategy == "lora_pissa_fast":
+        return manager.apply_lora_pissa(model, fast_svd=True, **kwargs)
+    elif strategy == "lora_olora":
+        return manager.apply_lora_olora(model, **kwargs)
+    elif strategy == "dora":
+        return manager.apply_lora_dora(model, use_rslora=False, **kwargs)
+    elif strategy == "dora_rslora":
+        return manager.apply_lora_dora(model, use_rslora=True, **kwargs)
+    elif strategy == "qlora":
+        return manager.apply_qora_style(model, **kwargs)
+    elif strategy == "manual_adapter":
+        return manager.apply_manual_adapter(model, **kwargs)
+    else:
+        raise ValueError(f"Unknown strategy: {strategy}")
+
+

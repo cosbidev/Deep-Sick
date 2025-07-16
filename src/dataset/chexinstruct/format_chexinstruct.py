@@ -1,263 +1,141 @@
-import argparse
+#!/usr/bin/env python
+# Copyright 2022 The HuggingFace Inc. team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Finetuning script for GEMMA3 or other causal language models using HuggingFace Transformers and Accelerate.
+
+This script is adapted from the official Transformers language modeling tutorial to support finetuning
+GEMMA3 and similar models on a text file or dataset, without using the HuggingFace Trainer.
+
+For more details and checkpoints, see:
+https://huggingface.co/models?filter=text-generation
+"""
+# You can adapt this script for your own causal language modeling tasks. See comments for pointers.
+import warnings
+warnings.filterwarnings("ignore")
 import sys
-import PIL
-from datasets import disable_caching
-
-sys.path.append('./')  # Ensure the src directory is in the path
+sys.path.append('./')
+import argparse
+import os
+from accelerate.logging import get_logger
 from src.dataset import load_parquet_image_dataset, save_dataset_as_parquet
-from src.models import (
-    data_format_gemma_conversation_chexinstruct,
-    data_format_qwen25vl_conversation,
-    data_format_llava15_conversation
-)
-import multiprocessing as mp
-import psutil
+from src.models import get_collator
 
-# Model formatting function mapping
-MODEL_FORMATTERS = {
-        'gemma'   : data_format_gemma_conversation_chexinstruct,
-        'llava15' : data_format_llava15_conversation,
-        'qwen25vl': data_format_qwen25vl_conversation,
-}
-# ---------------------------------------------------------------------
-# ⬇️  NEW / MOVED IMPORTS
-# ---------------------------------------------------------------------
-from pathlib import Path
-from functools import partial
-from PIL import ImageFile, Image
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True  # let PIL load incomplete files
-disable_caching()
+os.environ["HF_TOKEN"] = "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"
+cache_dir = os.path.join(os.getcwd(), "hf_cache")
+os.environ["HF_DATASETS_CACHE"] = cache_dir
+os.environ["HF_HOME"] = cache_dir
+os.environ["HUGGINGFACE_HUB_CACHE"] = cache_dir
+os.environ["HF_HUB_CACHE"] = cache_dir
+os.environ["HF_TOKEN"] = "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"
+CACHE_DIR = os.path.join(os.getcwd(), "hf_models_cache")
+logger = get_logger(__name__)
+hf_token = os.environ.get("HF_TOKEN", "")
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(
-            description='Format ChexInstruct dataset for different multimodal models',
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            epilog=
-            """
-Examples:
-  python format_chexinstruct.py --model gemma --input data_chexinstruct/hf_parquet --output data_chexinstruct/hf_parquet_gemma_format
-  python format_chexinstruct.py --model llava15 --input data_chexinstruct/hf_parquet --output data_chexinstruct/hf_parquet_llava15_format
-  python format_chexinstruct.py --model qwen25vl --input data_chexinstruct/hf_parquet --output data_chexinstruct/hf_parquet_qwen25vl_format
-        """
-    )
+def parse_args():
 
+    parser = argparse.ArgumentParser(description="Finetune a transformers model on a causal language modeling task")
     parser.add_argument(
-            '--model',
+            "--dataset_name",
             type=str,
+            default=None,
+            help="The name of the dataset to use (via the datasets library).",
+    )
+    parser.add_argument(
+            "--dataset_dir", type=str, default=None, help="Path to a directory containing the dataset files in .parquet format."
+    )
+    parser.add_argument(
+            "--model_name_or_path",
+            type=str,
+            help="Path to pretrained model or model identifier from huggingface.co/models.",
             required=True,
-            choices=['gemma', 'llava15', 'qwen25vl'],
-            help='Target model format (gemma, llava15, qwen25vl)'
+            default='google/gemma-3-4b-it',
     )
 
     parser.add_argument(
-            '--input',
-            type=str,
-            required=True,
-            help='Input dataset path (directory containing parquet files)'
+            "--preprocessing_num_workers",
+            type=int,
+            default=None,
+            help="The number of processes to use for the preprocessing.",
     )
 
-    parser.add_argument(
-            '--output',
-            type=str,
-            required=True,
-            help='Output directory path for formatted dataset'
-    )
+    args = parser.parse_args()
 
-    parser.add_argument(
-            '--splits',
-            type=str,
-            nargs='+',
-            default=[ 'val', 'test'], # 'train',
-            help='Dataset splits to process (default: train val test)'
-    )
-
-    parser.add_argument(
-            '--verbose',
-            action='store_true',
-            help='Enable verbose output'
-    )
-
-    return parser.parse_args()
+    return args
 
 
-
-
-# ---------------------------------------------------------------------
-def validate_paths(input_path: str, output_path: str):
-    """Validate input and output paths."""
-    input_dir = Path(input_path)
-    if not input_dir.exists():
-        raise FileNotFoundError(f"Input directory does not exist: {input_path}")
-
-    output_dir = Path(output_path)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    return input_dir, output_dir
-
-
-def get_optimal_num_proc():
-    """Get optimal number of processes based on system resources."""
-    cpu_count = mp.cpu_count()
-    memory_gb = psutil.virtual_memory().total / (1024 ** 3)
-
-    # Conservative approach: use fewer processes if memory is limited
-    if memory_gb < 16:
-        return min(4, cpu_count // 2)
-    elif memory_gb < 32:
-        return min(8, cpu_count // 2)
-    elif memory_gb < 64:
-        return min(16, cpu_count // 2)
-    else:
-        cpu_count //= 2
-    print("Using optimal number of processes:", cpu_count)
-
-    return cpu_count if cpu_count > 0 else 1
-
-
-
-# ---------------------------------------------------------------------
-# ⬇️  UTILITIES
-# ---------------------------------------------------------------------
-def has_valid_pil_images(examples, log_bad=None):
-    """
-    Validate that every PIL.Image in `example["image"]` truly decodes.
-
-    Parameters
-    ----------
-    example : dict
-        A single HF-Dataset row with an "image" key.
-        The value can be a PIL.Image or a list of PIL.Image objects.
-    log_bad : str | None
-        Path to a text file where failures are appended.
-
-    Returns
-    -------
-    bool
-        True  -> keep this example
-        False -> drop it
-    """
-    # if examples is None:
-    #     return False
-    # if examples['image'] is None:
-    #     return False
-    mask_list = []
-    for imgs in examples['image']:
-
-
-        for img in imgs:
-            if img == None:
-                mask_list.append(False)
-        try:
-            # no image, keep example (e.g. text-only)
-            if not isinstance(imgs, list):
-                imgs = [imgs]  # unify to list
-            # Force full pixel decode for every image.
-            for img in imgs:
-                img.load()  # raises OSError on real corruption
-        except Exception as e:
-            if log_bad is not None:
-                with open(log_bad, "a") as f:
-                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
-            mask_list.append(False)
-        except PIL.UnidentifiedImageError:
-            if log_bad is not None:
-                with open(log_bad, "a") as f:
-                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
-            mask_list.append(False)
-        except TypeError:
-            print(' Type error')
-            if log_bad is not None:
-                with open(log_bad, "a") as f:
-                    f.write(f"{getattr(img, 'filename', '⟨in-memory⟩')} - {e}\n")
-            mask_list.append(False)
-        mask_list.append(True)
-
-    return mask_list
-
-# ---------------------------------------------------------------------
-# ⬇️  MAIN PIPELINE (PATCHED)
-# ---------------------------------------------------------------------
-def format_dataset(
-        model_name: str,
-        input_path: str,
-        output_path: str,
-        splits: list,
-        verbose: bool = False
-):
-
-    num_proc = get_optimal_num_proc()
-    formatter = MODEL_FORMATTERS[model_name]
-
-    # file where we’ll collect bad-image messages
-    log_path = str(Path(output_path) / "corrupted_images.txt")
-
-    if verbose:
-        print(f"Loading ChexInstruct dataset from: {input_path}")
-
-    chexinstruct_data = load_parquet_image_dataset(input_path)
-    formatted_data = {}
-
-    for split in splits:
-        if split not in chexinstruct_data:
-            print(f"Warning: Split '{split}' not found. Skipping…")
-            continue
-
-        if verbose:
-            print(f"Processing {split} split…")
-
-        ds = chexinstruct_data[split]
-
-        # -----------------------------------------------------------------
-        # 1️⃣  PRE-FILTER  (multiprocess)
-        # -----------------------------------------------------------------
-        filter_fn = partial(has_valid_pil_images, log_bad=log_path)
-        # ds.filter(lambda x: x is not None,   # drop examples the formatter skipped
-        #          desc="Removing failed samples")
-        ds = ds.filter(
-                filter_fn,
-                batch_size=256,
-                batched=True,
-                num_proc=num_proc,  # multiprocess filtering
-                desc="Filtering corrupted images"
-        )
-
-        # -----------------------------------------------------------------
-        # 2️⃣  MAP  ➜  MODEL-SPECIFIC FORMAT
-        # -----------------------------------------------------------------
-        ds = ds.map(
-                formatter,
-                batch_size=256,
-                batched=True,
-                num_proc=1,
-                desc="Formatting dataset"
-        )
-
-        formatted_data[split] = ds
-        if verbose:
-            print(f"  – {split}: {len(ds):,} samples after formatting")
-
-    if verbose:
-        print(f"Saving formatted dataset to: {output_path}")
-
-    save_dataset_as_parquet(formatted_data, output_path)
-    print(f"✅ Dataset formatted for {model_name.upper()} and saved to “{output_path}”.")
-    print(f"📝 Corrupted images (if any) listed in: {log_path}")
-
-    return formatted_data
-
-
+# @hydra.main(version_base="v1.3", config_path="../../configs/PEFT_runs", config_name="config") # TODO # to use hydra for configuration management
 def main():
-    args = parse_arguments()
+    args = parse_args()
 
-    format_dataset(
-            model_name=args.model,
-            input_path=args.input,
-            output_path=args.output,
-            splits=args.splits,
-            verbose=args.verbose
+    # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
+    # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
+    # in the environment
+    # ----------------------------------- Accelerator Initialization -----------------------------------
+
+    # ----------------------------------- Dataset Loading -----------------------------------
+    if args.dataset_dir is not None:
+        # if os.path.exists(args.dataset_dir + '_tok'):
+        #     args.dataset_dir = args.dataset_dir + '_tok'
+        # Loading a dataset from a local directory.
+        raw_datasets = load_parquet_image_dataset(
+                dataset_dir=args.dataset_dir,
+                split_list=["train", "val"],
+                cache_dir=cache_dir # Specify the split you want to use ['test', 'val', 'train']
+        )
+
+
+
+    if args.dataset_name is None and args.dataset_dir is None:
+        raise ValueError(
+                "You need to specify either a dataset name or a dataset directory. "
+                "Use --dataset_name for a HF dataset or --dataset_dir to specify the dataset folder in local (parquet)."
+        )
+
+    column_names = raw_datasets["train"].column_names
+    if args.model_name_or_path:
+        # Get the text column names for the training and evaluation datasets
+        collator = get_collator(model_id=args.model_name_or_path,
+                                padding_side="right",
+                                token=hf_token)
+        # If the model is a GEMMA3 model, we use the processor and tokenizer from the collator
+        processor = collator.processor
+    else:
+        raise ValueError(
+                "You need to specify a model name or a path to a pretrained model."
+        )
+
+    def preprocess(examples):
+        return collator.get_tokenize_function()(examples)
+
+    tokenized_datasets = raw_datasets.map(
+            preprocess,
+            batched=True,
+            batch_size=512,
+            num_proc=args.preprocessing_num_workers,
+            remove_columns=column_names,
+            desc="Running tokenizer on dataset",
+            load_from_cache_file=False,  # ← important
+            keep_in_memory=True
+
     )
+    save_dataset_as_parquet(dataset_dict=tokenized_datasets,
+                            output_dir='data_chexinstruct/hf_parquet_gemma_format/gemma_findings_tok',
+                            name_file='tokenized'
+                            )
+
 
 
 if __name__ == "__main__":

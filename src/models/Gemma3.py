@@ -47,24 +47,29 @@ class GemmaCollator(VisionLanguageDataCollator):
     Data collator for LLaVA models
     Handles conversation format with images
     """
-
     def __init__(
             self,
             model_id: str = "google/gemma-3-4b-it",
-            max_length: int = 2048,
+            max_length: int = 1500,
             **kwargs: Any
     ):
         # Initialize the Gemma collator with model ID and max length
         self.system = False
-
+        self.max_l = 0
+        self.max_length = max_length
         self.model_name = model_id
-        processor = AutoProcessor.from_pretrained(model_id, **kwargs)
+        processor = AutoProcessor.from_pretrained(model_id,
+                                                  use_fast=True,
+                                                  max_length=max_length,
+                                                  padding="max_length",  # ← ensures uniform input shape
+                                                  truncation=True,  # ← avoids overflow
+                                                  **kwargs)
         processor.tokenizer.pad_token = processor.tokenizer.eos_token  # Use eos token as pad token
         processor.tokenizer.padding_side = "right"
-        super().__init__(processor, max_length=max_length)
+        super().__init__(processor)
 
     @staticmethod
-    def _format_conversation(example):
+    def _format_conversation(example, max_images=2):
         """
         Trasforma una struttura con 'text', 'image', 'image_path' (liste parallele per ciascun turno)
         nel formato:
@@ -96,6 +101,8 @@ class GemmaCollator(VisionLanguageDataCollator):
                         if text_value and isinstance(text_value, str):
                             all_chunks.append({"type": "text", "text": text_value.strip()})
                     elif ttype == "image":
+                        if idx + 1 > max_images:
+                            continue
                         image_obj = images[idx] if idx < len(images) else None
                         if image_obj is not None:
                             all_chunks.append({"type": "image", "image": image_obj})
@@ -104,6 +111,42 @@ class GemmaCollator(VisionLanguageDataCollator):
                 chat.append({"role": role, "content": all_chunks})
 
         return chat
+
+
+    def load_images(self, images, max_images=2, load_image_bytes=False):
+        """
+        Load image bytes from a nested list of image dicts with 'path' keys.
+
+        Args:
+            images (List[List[Dict]]): Each inner list contains dicts like {'path': 'path/to/image.jpg'}
+
+        Returns:
+            List[List[bytes]]: Nested list of image bytes, up to `max_images` per sample.
+        """
+        image_nested = []
+        for image_group in images:
+            group_bytes = []
+            count = 0
+            for img in image_group:
+                if count >= max_images:
+                    break
+                path = img.get("path")
+                if path and os.path.exists(path):
+                    try:
+                        if load_image_bytes:
+                            with open(path, "rb") as f:
+                                group_bytes.append(f.read())
+                                count += 1
+                        else:
+                            # Return the paths instead of bytes
+                            group_bytes.append(path)
+                            count += 1
+                    except Exception as e:
+                        print(f"[WARNING] Could not load image {path}: {e}")
+                else:
+                    print(f"[WARNING] Invalid or missing path: {path}")
+            image_nested.append(group_bytes)
+        return image_nested
 
     def tokenize_function(self, examples):
         """
@@ -123,13 +166,10 @@ class GemmaCollator(VisionLanguageDataCollator):
         Returns:
 
         """
-
         # Remove the system prompt:
-
         images = examples.get('image')
+        images = self.load_images(images)
         messages = examples.get('messages')
-        instructions = examples.get('instruction')
-        response = examples.get('response')
         if not self.system:
             messages = [[[{'role': m[0]['role'][r + 1], 'content': m[0]['content'][r + 1]} for r, ind in enumerate([r for r in m[0]['role'] if r != 'system'])]] for m in messages]
         else:
@@ -138,15 +178,25 @@ class GemmaCollator(VisionLanguageDataCollator):
         formatted_messages = [self._format_conversation(m[0]) for m in messages]
 
         texts = self.processor.apply_chat_template(formatted_messages, tokenize=False, add_generation_prompt=False)
+        # Tokenize the texts
+        length = [self.processor.tokenizer(m)['input_ids'].__len__() for m in texts]
+        n_of_images = [im.__len__() for im in images]
+        length_total = [l + len(m) * self.processor.image_seq_length for l, m in zip(length, images)]
+
+        if max(length_total) > self.max_l:
+            self.max_l = max(length_total)
+
+
 
         return {
-            'images': images,
-            'texts': texts,
-            'formatted_messages': formatted_messages
+                "n_of_images"      : n_of_images,
+                'length'            : length_total,
+                'images'            : images,
+                'texts'             : texts,
+                'formatted_messages': formatted_messages
         }
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
-
 
         """Process batch for LLaVA"""
         text_prompt = [el.get('texts', None) for el in batch]
@@ -156,8 +206,20 @@ class GemmaCollator(VisionLanguageDataCollator):
 
         # Tokenize the texts and process the images
         batch = self.processor(
-                text=text_prompt, images=images, return_tensors="pt", padding=True
-        )  # Encode texts and images into tensors
+
+                    text=text_prompt,
+                    images=images,
+                    return_tensors="pt",
+                    padding="max_length",  # ← ensures fixed-length
+                    truncation=True,
+                    max_length=self.max_length  # ← defined in __init__, e.g. 1024 or 2048
+
+        )
+
+
+
+
+        # Encode texts and images into tensors
         # Ensure the input_ids are padded correctly
         # The labels are the input_ids, and we mask the padding tokens in the loss computation
         labels = batch["input_ids"].clone()  # Clone input IDs for labels
@@ -170,10 +232,5 @@ class GemmaCollator(VisionLanguageDataCollator):
         labels[labels == image_token_id] = -100
         labels[labels == 262144] = -100
 
-
         batch["labels"] = labels
         return batch  # Return the prepared batch
-
-
-
-

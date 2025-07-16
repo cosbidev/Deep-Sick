@@ -10,7 +10,6 @@ import PIL
 import torchvision.transforms as T
 import requests
 
-
 IMAGE_FACTOR = 28
 MIN_PIXELS = 4 * 28 * 28
 MAX_PIXELS = 16384 * 28 * 28
@@ -118,7 +117,8 @@ def has_valid_pil_images(examples, log_bad=None):
 
     return mask_list
 
-def load_parquet_image_dataset(dataset_dir: str, split_list: list = []) -> DatasetDict:
+
+def load_parquet_image_dataset(dataset_dir: str, split_list: list = [], **kwargs) -> DatasetDict:
     """
     Loads a DatasetDict from a directory of split-based parquet files,
     and casts the 'image' column to Sequence[Image].
@@ -133,9 +133,10 @@ def load_parquet_image_dataset(dataset_dir: str, split_list: list = []) -> Datas
                 split_file.replace("data_", "").replace(".parquet", "").replace('tokenized_', '')] = os.path.join(dataset_dir, split_file)
 
 
-    dataset_dict = load_dataset("parquet", data_files=split_files)
-
+    dataset_dict = load_dataset("parquet", data_files=split_files, **kwargs)
     return dataset_dict
+
+
 def save_dataset_as_parquet(dataset_dict, output_dir, name_file):
     """
     Save a DatasetDict to Parquet format without copying image files.
@@ -359,6 +360,7 @@ def _get_dtype(dtype):
     else:
         print(f"Unsloth: {dtype} is not recognized, so we'll default to None")
         return None
+
 
 
 

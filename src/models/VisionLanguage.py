@@ -9,9 +9,8 @@ LANCZOS = PIL.Image.Resampling.LANCZOS
 class VisionLanguageDataCollator:
     """Base collator for vision-language models"""
 
-    def __init__(self, processor, max_length: int = 2048):
+    def __init__(self, processor):
         self.processor = processor
-        self.max_length = max_length
 
     def get_tokenize_function(self):
         """
@@ -30,6 +29,15 @@ class VisionLanguageDataCollator:
             A dictionary with collated tensors
         """
         raise NotImplementedError("Subclasses must implement collate_fn")
+    def preprocess_images(self, images: List[PIL.Image.Image]) -> List[PIL.Image.Image]:
+        """
+        Preprocess a list of images
+        Args:
+            images: List of PIL Image objects
+        Returns:
+            Preprocessed list of images
+        """
+        raise NotImplementedError("Subclasses must implement preprocess_images")
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         raise NotImplementedError("Subclasses must implement __call__")

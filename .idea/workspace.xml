@@ -4,20 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.0 ] removing Unsloth implementations collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes. New addition and reorganization for the dataset tokenization, bug solutions.">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.2 ] Adding Lora And parameter efficient fine-tuning, with the function implemented. To be tested">
+      <change afterPath="$PROJECT_DIR$/src/finetune/bash_test.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/peft.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/measure_memory_usage.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/measure_memory_usage_VLM.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/measure_memory_usage_for_batch_size.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/measure_memory_usage_for_batch_size_optimizer_offload.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/measure_memory_usage_optimizer_offload.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/batch_size_compiling/simple_orchestrator_test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/to_del.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/dataset/util_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/util_data.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/accelerated_chexinstruct_gemma.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/accelerated_chexinstruct_gemma.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/Gemma3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/Gemma3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/VisionLanguage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/VisionLanguage.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/util_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/util_models.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -555,7 +555,9 @@
       <workItem from="1751961597866" duration="46789000" />
       <workItem from="1752132382252" duration="1821000" />
       <workItem from="1752134613819" duration="22080000" />
-      <workItem from="1752303656352" duration="20151000" />
+      <workItem from="1752303656352" duration="36077000" />
+      <workItem from="1752518459196" duration="6851000" />
+      <workItem from="1752566612495" duration="33642000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -741,7 +743,15 @@
       <option name="project" value="LOCAL" />
       <updated>1752416820862</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="[Fine-tune-accelerated 1.1 ] Adding Lora And parameter efficient fine-tuning.">
+      <option name="closed" value="true" />
+      <created>1752484222225</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1752484222225</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -801,7 +811,8 @@
     <MESSAGE value="[Fine-tune ] finetuning code for the gemma3 models." />
     <MESSAGE value="[Fine-tune ] removing Unsloth collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes." />
     <MESSAGE value="[Fine-tune-accelerated 1.0 ] removing Unsloth implementations collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes. New addition and reorganization for the dataset tokenization, bug solutions." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.0 ] removing Unsloth implementations collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes. New addition and reorganization for the dataset tokenization, bug solutions." />
+    <MESSAGE value="[Fine-tune-accelerated 1.1 ] Adding Lora And parameter efficient fine-tuning." />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.1 ] Adding Lora And parameter efficient fine-tuning." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -885,11 +896,6 @@
           <option name="timeStamp" value="263" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py</url>
-          <line>16</line>
-          <option name="timeStamp" value="264" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/.venv/lib/python3.10/site-packages/transformers/trainer.py</url>
           <line>3683</line>
           <option name="timeStamp" value="272" />
@@ -910,9 +916,9 @@
           <option name="timeStamp" value="319" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/finetune/finetune_accelerated.py</url>
-          <line>506</line>
-          <option name="timeStamp" value="325" />
+          <url>file://$PROJECT_DIR$/src/models/peft.py</url>
+          <line>139</line>
+          <option name="timeStamp" value="328" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
