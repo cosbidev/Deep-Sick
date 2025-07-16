@@ -23,6 +23,8 @@ https://huggingface.co/models?filter=text-generation
 """
 # You can adapt this script for your own causal language modeling tasks. See comments for pointers.
 import warnings
+from idlelib.editor import get_accelerator
+
 from torch.profiler import profile, record_function, ProfilerActivity
 warnings.filterwarnings("ignore")
 
@@ -38,15 +40,18 @@ import os
 import random
 import datasets
 import torch
-import transformers
 from torch.utils.data import DataLoader
+from functools import partial
+import transformers
+
 from tqdm.auto import tqdm
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     get_scheduler,
+    MODEL_MAPPING,
+    SchedulerType
 )
-from transformers import MODEL_MAPPING, SchedulerType
 
 MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
@@ -91,7 +96,7 @@ def parse_args():
             required=True,
             default='google/gemma-3-4b-it',
     )
-
+    parser.add_argument("--debug", action="store_true", help="Whether to run in debug mode with fewer epochs and smaller batch size.")
     parser.add_argument(
             "--per_device_train_batch_size",
             type=int,
@@ -236,6 +241,11 @@ def main():
                 keep_in_memory = True,
                 num_proc=args.preprocessing_num_workers,
         )
+        
+        if args.debug:
+            # Reduce the dataset size for debugging purposes
+            for split in raw_datasets.keys():
+                raw_datasets[split] = raw_datasets[split].select(range(100))
 
 
     if args.dataset_name is None and args.dataset_dir is None:
@@ -334,6 +344,9 @@ def main():
         )
 
 
+
+        # Crea una versione parziale della funzione con i parametri fissi
+        fixed_seed_worker = partial(seed_worker, num_workers=4, rank=accelerator.process_index)
         # New Code #
         # DataLoaders creation:
         train_dataloader = DataLoader(
@@ -341,16 +354,15 @@ def main():
                 sampler= sampler_train,
                 collate_fn=collator,
                 drop_last=True,
-                worker_init_fn=seed_worker,
+                worker_init_fn=fixed_seed_worker,
                 batch_size=args.per_device_train_batch_size,
-                pin_memory=True
+                pin_memory=True,
         )
         eval_dataloader = DataLoader(
                 eval_dataset,
                 sampler=sampler_val,
                 collate_fn=collator,
                 drop_last=True,
-                worker_init_fn=seed_worker,
                 batch_size=args.per_device_eval_batch_size,
         )
     except Exception as e:
@@ -507,15 +519,16 @@ def main():
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
-
                 if accelerator.sync_gradients:
                     progress_bar.update(1)
                     completed_steps += 1
-            if step % 25 == 0 and step > 0:
-                # Sync the process for accelerator
-                accelerator.wait_for_everyone()
-                # Log the loss
-            print(f"[DEBUG] PIXEL_VALUES shape: {batch['pixel_values'].shape}+ {batch['pixel_values'].device} + {completed_steps}")
+
+                    # Cache flush sincronizzato solo quando necessario
+                    if completed_steps % 25 == 0:
+                        accelerator.wait_for_everyone()
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+            # print(f"[DEBUG] PIXEL_VALUES shape: {batch['pixel_values'].shape}+ {batch['pixel_values'].device} + {completed_steps}")
             # We keep track of the loss at each epoch
             if args.with_tracking:
                 step_loss = accelerator.reduce(loss.detach().clone()).item()
@@ -531,6 +544,7 @@ def main():
                 break
 
         perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator, eval_dataset)
+
 
         if args.with_tracking:
             accelerator.log(

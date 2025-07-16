@@ -38,10 +38,9 @@ accelerate launch \
   --model_name_or_path google/gemma-3-4b-it \
   --dataset_name chexinstruct \
   --dataset_dir data_chexinstruct/hf_parquet_gemma_format/gemma_findings \
-  --block_size 2048 \
   --output_dir ./reports/finetune_gemma_findings \
   --learning_rate 2e-4 \
-  --per_device_train_batch_size 1 \
+  --per_device_train_batch_size 4 \
   --per_device_eval_batch_size 2 \
   --num_train_epochs 2 \
   --with_tracking \

@@ -1,13 +1,14 @@
 import math
 from itertools import chain
-from typing import Optional, List
 import os
+import numpy as np
 import torch
 from torch.utils.data import Sampler
 from transformers import MODEL_MAPPING,  SchedulerType
 from transformers.trainer_pt_utils import get_length_grouped_indices as get_length_grouped_indices_hf
 MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+
 
 
 def group_texts(examples, block_size=512):
@@ -88,6 +89,10 @@ def split_to_even_chunks(indices, lengths, num_chunks):
             chunks_lengths[shortest_chunk] = float("inf")
 
     return chunks
+
+
+
+
 
 
 def get_variable_length_grouped_indices(lengths, batch_size, world_size, megabatch_mult=8, generator=None):
@@ -221,21 +226,18 @@ def get_modality_length_grouped_indices_auto(lengths, batch_size, world_size, ge
 
     return [i for megabatch in megabatches for i in megabatch]
 
-import torch
-from torch.utils.data import Sampler
-from collections import defaultdict
-import os
+
 
 class BlueprintGroupedSampler(Sampler):
     def __init__(
-        self,
-        batch_size: int,
-        world_size: int,
-        lengths,
-        n_images,
-        image_seq_len: int = 256,
-        generator=None,
-        seed: int = 42
+            self,
+            batch_size: int,
+            world_size: int,
+            lengths,
+            n_images,
+            image_seq_len: int = 256,
+            generator=None,
+            seed: int = 42
     ):
         super().__init__()
         self.batch_size = batch_size
@@ -254,73 +256,145 @@ class BlueprintGroupedSampler(Sampler):
         self.indices = self._build_index_sequence(lengths, n_images)
 
     def _build_index_sequence(self, lengths, n_images):
-        import numpy as np
+        """
+        Costruisce una sequenza di indici dove ogni batch ha ESATTAMENTE lo stesso numero
+        totale di immagini per ogni GPU per garantire bilanciamento perfetto.
+        """
+        n_images_array = np.array(n_images)
 
-        # Step 1: bucket indices by image count as numpy arrays (faster ops)
-        buckets = defaultdict(np.ndarray)
-        for n in set(n_images):
-            idx = np.where(np.array(n_images) == n)[0]
-            rng = torch.Generator().manual_seed(42 + n)
-            shuffled = torch.randperm(len(idx), generator=rng).numpy()
-            buckets[n] = idx[shuffled]
+        # Separa gli indici per numero di immagini
+        indices_2img = np.where(n_images_array == 2)[0]
+        indices_1img = np.where(n_images_array == 1)[0]
 
-        # Blueprints
-        if self.batch_size == 2:
-            primary_blueprint = {2: 2, 1: 2}
-            fallback_blueprint = {1: 4}
+        # Shuffle deterministico degli indici per ogni categoria
+        rng_2 = torch.Generator().manual_seed(42)
+        rng_1 = torch.Generator().manual_seed(43)
+
+        perm_2 = torch.randperm(len(indices_2img), generator=rng_2).numpy()
+        perm_1 = torch.randperm(len(indices_1img), generator=rng_1).numpy()
+
+        indices_2img = indices_2img[perm_2]
+        indices_1img = indices_1img[perm_1]
+
+        # Calcola strategia per garantire lo stesso numero di immagini per GPU
+        if self.batch_size == 4:
+            # Strategia fissa: 3 campioni da 2 img + 1 da 1 img = 7 immagini per GPU
+            samples_2img_per_gpu = 3
+            samples_1img_per_gpu = 1
+            images_per_gpu = 7
+        elif self.batch_size == 2:
+            # Strategia fissa: 1 campione da 2 img + 0 da 1 img = 2 immagini per GPU
+            samples_2img_per_gpu = 1
+            samples_1img_per_gpu = 0
+            images_per_gpu = 2
         else:
-            primary_blueprint = {2: 6, 1: 2}
-            fallback_blueprint = {1: 8}
-        all_batches = []
+            # Strategia di fallback
+            samples_2img_per_gpu = min(self.batch_size, self.batch_size * 2 // 3)
+            samples_1img_per_gpu = self.batch_size - samples_2img_per_gpu
+            images_per_gpu = samples_2img_per_gpu * 2 + samples_1img_per_gpu
 
-        def can_fulfill(bp):
-            return all(len(buckets[k]) >= v for k, v in bp.items())
+        # Calcola quante batch complete possiamo creare
+        max_batches_2img = len(indices_2img) // (samples_2img_per_gpu * self.world_size)
+        max_batches_1img = len(indices_1img) // (samples_1img_per_gpu * self.world_size) if samples_1img_per_gpu > 0 else float('inf')
+        max_batches = min(max_batches_2img, max_batches_1img)
 
-        # Step 2: build batches according to blueprints
-        while True:
-            if can_fulfill(primary_blueprint):
-                bp = primary_blueprint
-            elif can_fulfill(fallback_blueprint):
-                bp = fallback_blueprint
-            else:
-                break
+        print(f"[BlueprintSampler] Strategia: {samples_2img_per_gpu}x2img + {samples_1img_per_gpu}x1img = {images_per_gpu} img/GPU")
+        print(f"[BlueprintSampler] Max batches possibili: {max_batches}")
+        print(f"[BlueprintSampler] Campioni utilizzati: {max_batches * self.world_size * self.batch_size}")
 
-            batch = np.empty(self.global_batch_size, dtype=np.int32)
-            ptr = 0
-            for k, v in bp.items():
-                batch[ptr:ptr + v] = buckets[k][:v]
-                buckets[k] = buckets[k][v:]  # fast slicing
-                ptr += v
+        batches = []
 
-            all_batches.append(batch)
+        # Crea batch con strategia fissa
+        for batch_idx in range(max_batches):
+            global_batch = []
 
-        # Step 3: global shuffle
-        if len(all_batches) == 0:
-            return []
+            for gpu_rank in range(self.world_size):
+                gpu_batch = []
 
-        batches_array = np.stack(all_batches)
-        perm = torch.randperm(len(batches_array), generator=torch.Generator().manual_seed(123)).numpy()
-        shuffled = batches_array[perm]
+                # Aggiungi campioni da 2 immagini
+                for _ in range(samples_2img_per_gpu):
+                    idx = batch_idx * self.world_size * samples_2img_per_gpu + gpu_rank * samples_2img_per_gpu + len(gpu_batch)
+                    if idx < len(indices_2img):
+                        gpu_batch.append(indices_2img[idx])
 
-        # Step 4: flatten
-        return shuffled.flatten().tolist()
+                # Aggiungi campioni da 1 immagine
+                for _ in range(samples_1img_per_gpu):
+                    idx = batch_idx * self.world_size * samples_1img_per_gpu + gpu_rank * samples_1img_per_gpu + (len(gpu_batch) - samples_2img_per_gpu)
+                    if idx < len(indices_1img):
+                        gpu_batch.append(indices_1img[idx])
+
+                global_batch.extend(gpu_batch)
+
+            batches.append(global_batch)
+
+        # Aggiungi batch rimanenti solo con campioni da 1 immagine (se batch_size lo permette)
+        if samples_1img_per_gpu == 0 and len(indices_1img) > 0:
+            # Modalità fallback per batch_size=2: usa solo campioni da 1 immagine
+            remaining_1img = len(indices_1img)
+            additional_batches = remaining_1img // (self.batch_size * self.world_size)
+
+            for batch_idx in range(additional_batches):
+                global_batch = []
+                for gpu_rank in range(self.world_size):
+                    gpu_batch = []
+                    for sample_idx in range(self.batch_size):
+                        idx = batch_idx * self.world_size * self.batch_size + gpu_rank * self.batch_size + sample_idx
+                        if idx < len(indices_1img):
+                            gpu_batch.append(indices_1img[idx])
+                    global_batch.extend(gpu_batch)
+
+                if len(global_batch) == self.global_batch_size:
+                    batches.append(global_batch)
+
+        # Shuffle delle batch per evitare pattern
+        if len(batches) > 1:
+            batch_indices = torch.randperm(len(batches), generator=torch.Generator().manual_seed(123)).tolist()
+            batches = [batches[i] for i in batch_indices]
+
+        # Flatten tutte le batch
+        indices_sequence = []
+        for batch in batches:
+            indices_sequence.extend(batch)
+
+
+        return indices_sequence
 
     def __iter__(self):
-        total_batch_size = self.global_batch_size
-        assert len(self.indices) % total_batch_size == 0, \
-            f"Total indices ({len(self.indices)}) must be divisible by global batch size ({total_batch_size})"
+        """
+        Restituisce gli indici per il rank corrente usando operazioni vettoriali.
+        """
+        # Verifica che gli indici siano divisibili per il batch size globale
+        total_samples = len(self.indices)
+        if total_samples % self.global_batch_size != 0:
+            # Tronca per avere un numero esatto di batch complete
+            total_samples = (total_samples // self.global_batch_size) * self.global_batch_size
+            self.indices = self.indices[:total_samples]
 
-        batches = [
-            self.indices[i: i + total_batch_size]
-            for i in range(0, len(self.indices), total_batch_size)
-        ]
+        # Converti in numpy array per operazioni vettoriali più efficienti
+        indices_array = np.array(self.indices)
 
-        rank_batches = [
-            batch[self.rank * self.batch_size: (self.rank + 1) * self.batch_size]
-            for batch in batches
-        ]
+        # Reshape in batch globali: (num_batches, global_batch_size)
+        num_batches = len(indices_array) // self.global_batch_size
+        reshaped = indices_array.reshape(num_batches, self.global_batch_size)
 
-        return iter([i for batch in rank_batches for i in batch])
+        # Estrai slice per il rank corrente da ogni batch
+        rank_start = self.rank * self.batch_size
+        rank_end = (self.rank + 1) * self.batch_size
+        rank_batches = reshaped[:, rank_start:rank_end]
+
+        # Flatten per ottenere la sequenza finale
+        rank_indices = rank_batches.flatten()
+
+        return iter(rank_indices.tolist())
 
     def __len__(self):
-        return len(self.indices) // self.world_size
+        """
+        Restituisce il numero totale di campioni per il rank corrente.
+        """
+        total_samples = len(self.indices)
+        # Assicurati che sia divisibile per il batch size globale
+        total_samples = (total_samples // self.global_batch_size) * self.global_batch_size
+        return total_samples // self.world_size
+
+
+
