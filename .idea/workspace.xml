@@ -4,20 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.3 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs.">
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_2_config.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_3_config.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16_PROFILE.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_zero2_config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_zero3_config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/guide_zero_config.md" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.4 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs. A new sampler has been written, Deepspeed config file uploaded, also with the possibility to profile FLOPS">
+      <change afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/accelerated_chexinstruct_gemma.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/accelerated_chexinstruct_gemma.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,55 +44,55 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
-    &quot;Python.PreprocessBraxImages.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.analyzer_chexinstruct.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.benchmark_VLM.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.brax.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.chexpert_public.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.createHFDataset.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.demo_rexgradient160k.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.downloadBrax.executor&quot;: &quot;Run&quot;,
-    &quot;Python.downloadMedmax.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.extract_mimic_nle.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_cxr.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_cxr_vqa.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_nle.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ms_cxr.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.openi.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.padchest_preprocessing.executor&quot;: &quot;Run&quot;,
-    &quot;Python.parallel.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.pipeline.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.preprocessReports.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.preprocessingImagesPadchest.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.rex_gradient.executor&quot;: &quot;Run&quot;,
-    &quot;Python.siim.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.splitFileCreation.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/deepspeed&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;terminal&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Python.PreprocessBraxImages.executor": "Debug",
+    "Python.analyzer_chexinstruct.executor": "Debug",
+    "Python.benchmark_VLM.executor": "Debug",
+    "Python.brax.executor": "Debug",
+    "Python.chexpert_public.executor": "Debug",
+    "Python.createHFDataset.executor": "Debug",
+    "Python.demo_rexgradient160k.executor": "Debug",
+    "Python.downloadBrax.executor": "Run",
+    "Python.downloadMedmax.executor": "Debug",
+    "Python.extract_mimic_nle.executor": "Debug",
+    "Python.mimic_cxr.executor": "Debug",
+    "Python.mimic_cxr_vqa.executor": "Debug",
+    "Python.mimic_nle.executor": "Run",
+    "Python.ms_cxr.executor": "Debug",
+    "Python.openi.executor": "Debug",
+    "Python.padchest_preprocessing.executor": "Run",
+    "Python.parallel.executor": "Debug",
+    "Python.pipeline.executor": "Debug",
+    "Python.preprocessReports.executor": "Debug",
+    "Python.preprocessingImagesPadchest.executor": "Debug",
+    "Python.rex_gradient.executor": "Run",
+    "Python.siim.executor": "Debug",
+    "Python.splitFileCreation.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "false",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/deepspeed",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "terminal",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/deepspeed" />
+      <recent name="$PROJECT_DIR$/src/finetune" />
       <recent name="$PROJECT_DIR$/src/benchmark/batch_size_compiling" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src/train" />
-      <recent name="$PROJECT_DIR$/data" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/dataset" />
@@ -557,7 +551,7 @@
       <workItem from="1752134613819" duration="22080000" />
       <workItem from="1752303656352" duration="36077000" />
       <workItem from="1752518459196" duration="6851000" />
-      <workItem from="1752566612495" duration="41091000" />
+      <workItem from="1752566612495" duration="46164000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -759,7 +753,15 @@
       <option name="project" value="LOCAL" />
       <updated>1752684725014</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="[Fine-tune-accelerated 1.4 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs. A new sampler has been written, Deepspeed config file uploaded, also with the possibility to profile FLOPS">
+      <option name="closed" value="true" />
+      <created>1752695136819</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1752695136819</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -796,7 +798,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="DATASET TRACKING Update, all the progress about the dataset creation and replication." />
     <MESSAGE value="Add of src and other download files from alvis" />
     <MESSAGE value="Reorganization download, src and other parts." />
     <MESSAGE value="Preprocessing, download and other stuff" />
@@ -821,7 +822,8 @@
     <MESSAGE value="[Fine-tune-accelerated 1.0 ] removing Unsloth implementations collator, and addition of code for: deepspeed zero2, zero3. Code collected from the public repo of deepspeed, correction to some bug related to rank numbers ans world-sizes. New addition and reorganization for the dataset tokenization, bug solutions." />
     <MESSAGE value="[Fine-tune-accelerated 1.1 ] Adding Lora And parameter efficient fine-tuning." />
     <MESSAGE value="[Fine-tune-accelerated 1.3 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.3 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs." />
+    <MESSAGE value="[Fine-tune-accelerated 1.4 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs. A new sampler has been written, Deepspeed config file uploaded, also with the possibility to profile FLOPS" />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.4 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs. A new sampler has been written, Deepspeed config file uploaded, also with the possibility to profile FLOPS" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

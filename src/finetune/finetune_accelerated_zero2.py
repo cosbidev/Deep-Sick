@@ -499,33 +499,41 @@ def main():
 
         # skip new `skip_first_batches` to skip the batches when resuming from ckpt
         if args.resume_from_checkpoint and epoch == starting_epoch and resume_step is not None:
+            # We need to skip steps until we reach the resumed step
             active_dataloader = accelerator.skip_first_batches(train_dataloader, resume_step)
         else:
+            # After the first iteration though, we need to go back to the original dataloader
             active_dataloader = train_dataloader
-
         for step, batch in enumerate(active_dataloader):
-            # RIMUOVI: with accelerator.accumulate(model):
+            # In particular, DeepSpeed handles `gradient_accumulation` via `DeepSpeedEngine`.
+            # Below, we use `accelerator.accumulate` if the user
+            # wants to switch to other approaches such as plain DDP, PyTorch FSDP ...
+            # This avoids having to change any code as things are all handled across different distributed setups.
+            with accelerator.accumulate(model):
 
-            outputs = model(**batch)
-            loss = outputs.loss
 
-            # Scala la loss per gradient accumulation
-            loss = loss / accelerator.gradient_accumulation_steps
-            accelerator.backward(loss)
 
-            # Aggiorna solo quando l'accumulation è completa
-            if (step + 1) % accelerator.gradient_accumulation_steps == 0:
+                outputs = model(**batch)
+                loss = outputs.loss
+                accelerator.backward(loss)
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
+                if accelerator.sync_gradients:
+                    progress_bar.update(1)
+                    completed_steps += 1
 
-                progress_bar.update(1)
-                completed_steps += 1
+                    # Cache flush sincronizzato solo quando necessario
+                if step % 5 == 0:
 
+                    accelerator.wait_for_everyone()
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+            # print(f"[DEBUG] PIXEL_VALUES shape: {batch['pixel_values'].shape}+ {batch['pixel_values'].device} + {completed_steps}")
             # We keep track of the loss at each epoch
             if args.with_tracking:
                 step_loss = accelerator.reduce(loss.detach().clone()).item()
-                total_loss += step_loss * accelerator.gradient_accumulation_steps
+                total_loss += step_loss
 
             if isinstance(checkpointing_steps, int):
                 if completed_steps % checkpointing_steps == 0:
@@ -533,7 +541,6 @@ def main():
                     if args.output_dir is not None:
                         output_dir = os.path.join(args.output_dir, output_dir)
                     accelerator.save_state(output_dir)
-
             if completed_steps >= args.max_train_steps:
                 break
 

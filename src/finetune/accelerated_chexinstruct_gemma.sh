@@ -26,7 +26,7 @@ source Deep_Sick_env/bin/activate
 
 
 export CUDA_VISIBLE_DEVICES=0,1
-export MASTER_PORT=29600
+export MASTER_PORT=29700
 export WANDB_MODE=online            # or "disabled" if you don't want to sync
 export PYTHONPATH=${workspaceFolder}
 
