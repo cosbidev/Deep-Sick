@@ -1,89 +1,63 @@
 import io
-
-from .VisionLanguage import VisionLanguageDataCollator
-from transformers import AutoProcessor
-from typing import Any, Dict, List
-import torch
-from PIL import Image
 import os
+from typing import Any, Dict, List
 
+import PIL
+import torch
+from PIL import Image, ImageFile
+from transformers import AutoProcessor
+from .VisionLanguage import VisionLanguageDataCollator
+import threading
 
-# For multi-image cases
-
-def process_vision_info(messages: list[dict]) -> list[Image.Image]:
-
-    image_inputs = []
-    for msg in messages:
-        content = msg[0].get("content", [])
-        if not isinstance(content, list):
-            content = [content]
-        local_content_list = []
-        for c in content:
-            if isinstance(c, dict) and ("image" in c.values() or c.get("type") == "image"):
-                if "image" in c.values():
-                    image = c["image"]
-                else:
-                    image = c
-
-                img = None
-                if isinstance(image, Image.Image):
-                    img = image
-                elif isinstance(image, dict) and "bytes" in image:
-                    try:
-                        img = Image.open(io.BytesIO(image["bytes"]))
-                    except Exception as e:
-                        print(f"Failed to decode image from bytes: {e}")
-
-                elif isinstance(image, str) and os.path.exists(image):
-                    img = Image.open(image)
-                if isinstance(img, Image.Image):
-                    local_content_list.append(img.convert("RGB"))
-        image_inputs.append(local_content_list)
-    return image_inputs
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class GemmaCollator(VisionLanguageDataCollator):
     """
-    Data collator for LLaVA models
-    Handles conversation format with images
+    Data collator ottimizzato per LLaVA models con cache e parallelizzazione
     """
+
     def __init__(
             self,
             model_id: str = "google/gemma-3-4b-it",
             max_length: int = 1500,
+            enable_image_cache: bool = True,
+            cache_size: int = 10000,
+            use_fast_validation: bool = True,
             **kwargs: Any
     ):
-        # Initialize the Gemma collator with model ID and max length
         self.system = False
         self.max_l = 0
         self.max_length = max_length
         self.model_name = model_id
+        self.enable_image_cache = enable_image_cache
+        self.use_fast_validation = use_fast_validation
+
+        # Cache per validazione immagini
+        if enable_image_cache:
+            self._path_cache = {}
+            self._cache_lock = threading.Lock()
+            self._cache_size = cache_size
+
         processor = AutoProcessor.from_pretrained(model_id,
                                                   use_fast=True,
                                                   max_length=max_length,
-                                                  padding="max_length",  # ← ensures uniform input shape
-                                                  truncation=True,  # ← avoids overflow
+                                                  padding="max_length",
+                                                  truncation=True,
                                                   **kwargs)
-        processor.tokenizer.pad_token = processor.tokenizer.eos_token  # Use eos token as pad token
+        processor.tokenizer.pad_token = processor.tokenizer.eos_token
         processor.tokenizer.padding_side = "right"
         super().__init__(processor)
 
     @staticmethod
     def _format_conversation(example, max_images=2):
-        """
-        Trasforma una struttura con 'text', 'image', 'image_path' (liste parallele per ciascun turno)
-        nel formato:
-        [
-          {"role": "user", "content": [{"type": ..., "text": ..., "image": ...}, ...]},
-          {"role": "assistant", "content": [{"type": ..., "text": ..., "image": ...}]}
-        ]
-        """
+        """Mantiene la stessa logica originale"""
         chat = []
+        assert max_images > 0
         for msg in example:
             role = msg["role"]
             content_obj = msg["content"]
 
-            # Support both single-dict and list-of-dict formats
             if isinstance(content_obj, dict):
                 contents = [content_obj]
             else:
@@ -112,84 +86,182 @@ class GemmaCollator(VisionLanguageDataCollator):
 
         return chat
 
+    def _is_valid_image_fast(self, path):
+        """Validazione ultra-veloce basata su header"""
+        try:
+            if not path:
+                return False
 
-    def load_images(self, images, max_images=2, load_image_bytes=False):
+            # Check cache first
+            if self.enable_image_cache:
+                with self._cache_lock:
+                    if path in self._path_cache:
+                        return self._path_cache[path]
+
+            # Quick file existence and size check
+            if not os.path.exists(path) or os.path.getsize(path) < 100:
+                result = False
+            else:
+                # Check file header
+                with open(path, 'rb') as f:
+                    header = f.read(32)
+                    result = (header.startswith(b'\xff\xd8\xff') or  # JPEG
+                              header.startswith(b'\x89PNG\r\n\x1a\n') or  # PNG
+                              header.startswith(b'GIF87a') or header.startswith(b'GIF89a') or  # GIF
+                              header.startswith(b'WEBP', 8))  # WebP
+
+            # Cache result
+            if self.enable_image_cache:
+                with self._cache_lock:
+                    # Manage cache size
+                    if len(self._path_cache) >= self._cache_size:
+                        # Remove oldest 20% of entries
+                        keys_to_remove = list(self._path_cache.keys())[:self._cache_size // 5]
+                        for key in keys_to_remove:
+                            del self._path_cache[key]
+
+                    self._path_cache[path] = result
+
+            return result
+
+        except Exception:
+            return False
+
+    def _validate_image_pil(self, path):
+        """Validazione completa con PIL (fallback)"""
+        try:
+            with Image.open(path) as img_obj:
+                img_obj.verify()
+            return True
+        except Exception as e:
+            print(f"[WARNING] Error validating image {path}: {e.with_traceback()}")
+
+            return False
+
+    def load_images_optimized(self, images, max_images=2, load_image_bytes=False):
         """
-        Load image bytes from a nested list of image dicts with 'path' keys.
-
-        Args:
-            images (List[List[Dict]]): Each inner list contains dicts like {'path': 'path/to/image.jpg'}
-
-        Returns:
-            List[List[bytes]]: Nested list of image bytes, up to `max_images` per sample.
+        Versione ottimizzata per HF datasets.map() con cache e validazione veloce
         """
         image_nested = []
+
         for image_group in images:
-            group_bytes = []
-            count = 0
+            group_items = []
+            loaded = 0
+
             for img in image_group:
-                if count >= max_images:
+                if loaded >= max_images:
                     break
+
                 path = img.get("path")
-                if path and os.path.exists(path):
-                    try:
-                        if load_image_bytes:
-                            with open(path, "rb") as f:
-                                group_bytes.append(f.read())
-                                count += 1
-                        else:
-                            # Return the paths instead of bytes
-                            group_bytes.append(path)
-                            count += 1
-                    except Exception as e:
-                        print(f"[WARNING] Could not load image {path}: {e}")
-                else:
-                    print(f"[WARNING] Invalid or missing path: {path}")
-            image_nested.append(group_bytes)
+                if not path:
+                    continue
+
+                # Genera percorsi candidati
+                candidate_paths = [path]
+
+                # Trova primo percorso valido
+                valid_path = None
+                for candidate in candidate_paths:
+                    if self.use_fast_validation:
+                        # Prima validazione veloce
+                        if self._is_valid_image_fast(candidate):
+                            valid_path = candidate
+                            break
+                    else:
+                        # Validazione completa PIL
+                        if os.path.exists(candidate) and self._validate_image_pil(candidate):
+                            valid_path = candidate
+
+                            break
+
+                if valid_path:
+                    if load_image_bytes:
+                        try:
+                            with open(valid_path, "rb") as f:
+                                group_items.append(f.read())
+                        except Exception as e:
+                            print(f"[WARNING] Error reading image bytes {valid_path}: {e}")
+                            continue
+                    else:
+                        group_items.append(valid_path)
+                    loaded += 1
+
+            image_nested.append(group_items)
+
         return image_nested
+
 
     def tokenize_function(self, examples):
         """
-        [{'role': ['system', 'user', 'assistant'],
-        'content': [{'type': ['text'], 'text': ['As a radiology AI assistant, generate comprehensive findings incorporating the clinical indication. Tailor your radiological assessment to address the specific clinical question.'],
-        'image': [None],
-        'image_path': [None]},
-         {'type': ['image', 'image', 'text'],
-         'text': ['', '', 'You are provided with one or multiple chest X-ray image(s). Given the indication: "___F with new onset ascites // eval for infection", write a detailed findings section for the diagnostic report.'],
-         'image': [None, None, None],
-         'image_path': ['data/mimic-cxr/files_512/p10/p10000032/s50414267/02aa804e-bde0afdd-112c0b34-7bc16630-4e384014.jpg', 'data/mimic-cxr/files_512/p10/p10000032/s50414267/174413ec-4ec4c1f7-34ea26b7-c5f994f8-79ef1962.jpg', None]},
-         {'type': ['text'], 'text': ['There is no focal consolidation, pleural effusion or pneumothorax.  Bilateral nodular opacities that most likely represent nipple shadows. The cardiomediastinal silhouette is normal.  Clips project over the left lung, potentially within the breast. The imaged upper abdomen is unremarkable. Chronic deformity of the posterior left sixth and seventh ribs are noted.'],
-         'image': [None], 'image_path': [None]}]}]
-        Args:
-            examples:
-
-        Returns:
-
+        Versione ottimizzata per HF datasets.map()
         """
-        # Remove the system prompt:
+        # Carica immagini in modo ottimizzato
         images = examples.get('image')
-        images = self.load_images(images)
+        images = self.load_images_optimized(images)
+
+        # Verifica che le immagini siano valide
+        lenght_checker = [len(img_group) for img_group in images]
+        # Use the lenght_checker to filter out empty image groups
+        index_to_keep = [l>0 for i, l in enumerate(lenght_checker)]
+
+
+        # Processa messaggi
         messages = examples.get('messages')
+        b_size = len(messages)
+        # Mantieni solo i messaggi con immagini valide
+        images = [img_group for i, img_group in enumerate(images) if index_to_keep[i]]
+        lenght_checker = [l for i, l in enumerate(lenght_checker) if index_to_keep[i]]
+        messages = [m for i, m in enumerate(messages) if index_to_keep[i]]
+
         if not self.system:
-            messages = [[[{'role': m[0]['role'][r + 1], 'content': m[0]['content'][r + 1]} for r, ind in enumerate([r for r in m[0]['role'] if r != 'system'])]] for m in messages]
+            messages = [[[{'role': m[0]['role'][r + 1], 'content': m[0]['content'][r + 1]}
+                          for r, ind in enumerate([r for r in m[0]['role'] if r != 'system'])]]
+                        for m in messages]
         else:
-            messages = [[[{'role': m[0]['role'][r], 'content': m[0]['content'][r]} for r, ind in enumerate(m[0]['role'])]] for m in messages]
+            messages = [[[{'role': m[0]['role'][r], 'content': m[0]['content'][r]}
+                          for r, ind in enumerate(m[0]['role'])]]
+                        for m in messages]
+        formatted_messages = [self._format_conversation(m[0], max_images=l) for m, l in zip(messages, lenght_checker)]
 
-        formatted_messages = [self._format_conversation(m[0]) for m in messages]
+        # Applica chat template
+        texts = self.processor.apply_chat_template(formatted_messages,
+                                                   tokenize=False,
+                                                   add_generation_prompt=False)
 
-        texts = self.processor.apply_chat_template(formatted_messages, tokenize=False, add_generation_prompt=False)
-        # Tokenize the texts
-        length = [self.processor.tokenizer(m)['input_ids'].__len__() for m in texts]
-        n_of_images = [im.__len__() for im in images]
-        length_total = [l + len(m) * self.processor.image_seq_length for l, m in zip(length, images)]
+        # Calcola lunghezze (ottimizzato per batch)
+        tokenized_lengths = []
+        for text in texts:
+            tokens = self.processor.tokenizer(text, add_special_tokens=False)['input_ids']
+            tokenized_lengths.append(len(tokens))
 
-        if max(length_total) > self.max_l:
+        n_of_images = [len(img_group) for img_group in images]
+        length_total = [length + n_imgs * self.processor.image_seq_length
+                        for length, n_imgs in zip(tokenized_lengths, n_of_images)]
+
+        if length_total and max(length_total) > self.max_l:
             self.max_l = max(length_total)
 
+        if len(formatted_messages) != b_size:
+            # Add None to maintain batch size
+            if len(texts) < b_size:
+                for _ in range(b_size - len(texts)):
+                    texts.append(None)
+            if len(images) < b_size:
+                for _ in range(b_size - len(images)):
+                    images.append(None)
+            if len(formatted_messages) < b_size:
+                for _ in range(b_size - len(formatted_messages)):
+                    formatted_messages.append(None)
+            if len(n_of_images) < b_size:
+                for _ in range(b_size - len(n_of_images)):
+                    n_of_images.append(None)
+            if len(length_total) < b_size:
+                for _ in range(b_size - len(length_total)):
+                    length_total.append(None)
 
 
         return {
-                "n_of_images"      : n_of_images,
+                "n_of_images"       : n_of_images,
                 'length'            : length_total,
                 'images'            : images,
                 'texts'             : texts,
@@ -197,8 +269,7 @@ class GemmaCollator(VisionLanguageDataCollator):
         }
 
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
-
-        """Process batch for LLaVA"""
+        """Process batch for LLaVA - mantiene la logica originale"""
         text_prompt = [el.get('texts', None) for el in batch]
         formatted_messages = [el.get('formatted_messages', None) for el in batch]
 
@@ -206,26 +277,20 @@ class GemmaCollator(VisionLanguageDataCollator):
 
         # Tokenize the texts and process the images
         batch = self.processor(
-
-                    text=text_prompt,
-                    images=images,
-                    return_tensors="pt",
-                    padding="max_length",  # ← ensures fixed-length
-                    truncation=True,
-                    max_length=self.max_length  # ← defined in __init__, e.g. 1024 or 2048
-
+                text=text_prompt,
+                images=images,
+                return_tensors="pt",
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length
         )
 
-
-
-
         # Encode texts and images into tensors
-        # Ensure the input_ids are padded correctly
-        # The labels are the input_ids, and we mask the padding tokens in the loss computation
-        labels = batch["input_ids"].clone()  # Clone input IDs for labels
-        # Mask image tokens
+        labels = batch["input_ids"].clone()
         image_token_id = [
-                self.processor.tokenizer.convert_tokens_to_ids(self.processor.tokenizer.special_tokens_map["boi_token"])
+                self.processor.tokenizer.convert_tokens_to_ids(
+                        self.processor.tokenizer.special_tokens_map["boi_token"]
+                )
         ]
 
         labels[labels == self.processor.tokenizer.pad_token_id] = -100
@@ -233,4 +298,63 @@ class GemmaCollator(VisionLanguageDataCollator):
         labels[labels == 262144] = -100
 
         batch["labels"] = labels
-        return batch  # Return the prepared batch
+        return batch
+
+    def clear_cache(self):
+        """Pulisce la cache delle immagini"""
+        if self.enable_image_cache:
+            with self._cache_lock:
+                self._path_cache.clear()
+
+    def get_cache_stats(self):
+        """Restituisce statistiche sulla cache"""
+        if self.enable_image_cache:
+            with self._cache_lock:
+                return {
+                        "cache_size" : len(self._path_cache),
+                        "cache_limit": self._cache_size
+                }
+        return {"cache_disabled": True}
+
+
+# Mantieni la funzione originale per compatibilità
+def process_vision_info(messages: list[dict]) -> list[Image.Image]:
+    """Mantiene la logica originale per process_vision_info"""
+    image_inputs = []
+    for msg in messages:
+        content = msg[0].get("content", [])
+        if not isinstance(content, list):
+            content = [content]
+        local_content_list = []
+        for c in content:
+            if isinstance(c, dict) and ("image" in c.values() or c.get("type") == "image"):
+                if "image" in c.values():
+                    image = c["image"]
+                else:
+                    image = c
+                img = None
+                if isinstance(image, Image.Image):
+                    img = image
+                elif isinstance(image, dict) and "bytes" in image:
+                    try:
+                        img = Image.open(io.BytesIO(image["bytes"]))
+                    except Exception as e:
+                        print(f"Failed to decode image from bytes: {e}")
+                elif isinstance(image, str):
+                    try:
+                        if not os.path.exists(image):
+                            img = Image.open(image.replace("train-512", "train"))
+                        else:
+                            img = Image.open(image)
+                    except PIL.UnidentifiedImageError as e:
+                        print(f"Failed to open image from path: {image}", e)
+                        if os.path.exists(image.replace("train-512", "train")):
+                            img = Image.open(image.replace("train-512", "train"))
+                else:
+                    print(f"Unsupported: ", image)
+                    img = None
+
+                if isinstance(img, Image.Image):
+                    local_content_list.append(img.convert("RGB"))
+        image_inputs.append(local_content_list)
+    return image_inputs

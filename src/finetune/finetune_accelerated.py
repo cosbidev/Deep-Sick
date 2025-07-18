@@ -28,7 +28,8 @@ warnings.filterwarnings("ignore")
 
 # import hydra TODO # to use hydra for configuration management
 # from omegaconf import DictConfig # TODO # to use hydra for configuration management
-
+import wandb
+wandb.login(key="8be012e7c0ff0d4431216d5b3f309041178cacd4")
 from transformers.trainer_utils import seed_worker
 import argparse
 import json
@@ -192,6 +193,19 @@ def parse_args():
             action="store_true",
             help="Whether to enable experiment trackers for logging.",
     )
+    parser.add_argument("--peft_strategy",
+                        type=str, default="lora_gaussian",)
+    parser.add_argument("--rank", type=int, default=32, help="Rank for LoRA layers.")
+    parser.add_argument("--lora_alpha", type=int, default=32, help="Alpha for LoRA layers.")
+    parser.add_argument("--lora_dropout", type=float, default=0.05, help="Dropout for LoRA layers.")
+    parser.add_argument('--freeze_multimodal', default=True, action='store_true')
+    parser.add_argument('--finetune_vision_layers', default=False, action='store_true')
+    parser.add_argument('--finetune_language_layers', default=True, action='store_true')
+    parser.add_argument('--finetune_attention_modules', default=True, action='store_true')
+    parser.add_argument('--finetune_mlp_modules', default=True, action='store_true')
+
+
+
     parser.add_argument(
             "--report_to",
             type=str,
@@ -226,6 +240,12 @@ def main():
                     gradient_accumulation_steps=args.gradient_accumulation_steps,
             )
     )
+    # New Code #
+    accelerator.init_trackers(
+            project_name=f'{args.model_name_or_path.split("/")}-finetuning-{args.peft_strategy}',
+            config=vars(args)  # or your config dict
+    )
+
 
     # ----------------------------------- Dataset Loading -----------------------------------
     if args.dataset_dir is not None:
@@ -256,8 +276,6 @@ def main():
 
     train_dataset = raw_datasets["train"]
     eval_dataset = raw_datasets["val"]
-
-
 
     # ---------------------- CONFIGURATION MODEL -----------------------------------
     # Make one log on every process with the configuration for debugging.
@@ -307,8 +325,8 @@ def main():
         model = configure_model_for_training(
                 model,
                 strategy="lora_gaussian",
-                r=64,  # Larger = higher accuracy, but might overfit
-                lora_alpha=16,  # Recommended alpha == r at least
+                r=32,
+                lora_alpha=32,
                 lora_dropout=0.05,
                 bias="none",
                 freeze_multimodal=True,
@@ -522,6 +540,10 @@ def main():
                 progress_bar.update(1)
                 completed_steps += 1
 
+                accelerator.log({
+                        "train/loss": loss.item(),
+                        "train/lr"  : lr_scheduler.get_last_lr()[0]
+                }, step=step)
             # We keep track of the loss at each epoch
             if args.with_tracking:
                 step_loss = accelerator.reduce(loss.detach().clone()).item()
@@ -537,7 +559,7 @@ def main():
             if completed_steps >= args.max_train_steps:
                 break
 
-        perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator, eval_dataset)
+        perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator)
 
 
         if args.with_tracking:
@@ -571,6 +593,7 @@ def main():
             accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
             accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
 
+
     # New Code #
     # Loads the best checkpoint after the training is finished
     if args.load_best_model:
@@ -578,7 +601,7 @@ def main():
 
     # New Code #
     # Evaluates using the best checkpoint
-    perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator, eval_dataset)
+    perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator)
     logger.info(f"Best model metrics: perplexity: {perplexity} eval_loss: {eval_loss}")
     if perplexity != best_metric:
         raise AssertionError(
@@ -588,13 +611,6 @@ def main():
     if args.output_dir is not None:
         accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
-
-        # New Code #
-        # Saves the whole/unpartitioned fp16 model when in ZeRO Stage-3 to the output directory if
-        # `stage3_gather_16bit_weights_on_model_save` is True in DeepSpeed Config file or
-        # `zero3_save_16bit_model` is True in DeepSpeed Plugin.
-        # For Zero Stages 1 and 2, models are saved as usual in the output directory.
-        # The model name saved is `pytorch_model.bin`
         unwrapped_model.save_pretrained(
                 args.output_dir,
                 is_main_process=accelerator.is_main_process,
@@ -603,7 +619,7 @@ def main():
         )
         if accelerator.is_main_process:
             tokenizer.save_pretrained(args.output_dir)
-            # if args.push_to_hub:
+            # if args.push_to_hub: TODO # Uncomment to push the model to the HuggingFace Hub
             #     api.upload_folder(
             #         repo_id=repo_id,
             #         folder_path=args.output_dir,
@@ -614,6 +630,7 @@ def main():
             json.dump({"perplexity": perplexity, "eval_loss": eval_loss.item()}, f)
     accelerator.end_training()
 
+    print("|/| May the force be with you! Training completed successfully.")
 
 if __name__ == "__main__":
     main()

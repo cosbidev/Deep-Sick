@@ -1,27 +1,28 @@
 #!/bin/bash
 
-# ChexInstruct Dataset Formatter Runner
-# Usage: ./run_format.sh [model] [input_dir] [output_dir]
+# Move to project directory
+cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick
 
-set -e  # Exit on any error
+# Load modules
+module purge
+module load Python/3.11.3-GCCcore-12.3.0
+module load scikit-image/0.22.0
+module load scikit-learn/1.3.1
+module load h5py/3.9.0-foss-2023a
+module load CUDA/12.1.1
 
-# Default values
-MODEL=${1:-"gemma"}
-INPUT_DIR=${2:-"data_chexinstruct/hf_parquet"}
-OUTPUT_DIR=${3:-"data_chexinstruct/hf_parquet_${MODEL}_format"}
+# Activate the virtual environment
+source Deep_Sick_env/bin/activate
 
-echo "🚀 Starting ChexInstruct dataset formatting..."
-echo "   Model: $MODEL"
-echo "   Input: $INPUT_DIR"
-echo "   Output: $OUTPUT_DIR"
-echo ""
+
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+export WANDB_MODE=online            # or "disabled" if you don't want to sync
+export PYTHONPATH=${workspaceFolder}
 
 # Run the formatting script
 python src/dataset/chexinstruct/format_chexinstruct.py \
-    --model "$MODEL" \
-    --input "$INPUT_DIR" \
-    --output "$OUTPUT_DIR" \
-    --verbose
+                --model_name_or_path google/gemma-3-4b-it \
+                --dataset_name chexinstruct \
+                --dataset_dir data_chexinstruct/hf_parquet_gemma_format/gemma_findings \
+                --preprocessing_num_workers 8
 
-echo ""
-echo "✅ Formatting complete!"

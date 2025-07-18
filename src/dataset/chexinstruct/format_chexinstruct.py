@@ -110,8 +110,6 @@ def main():
         collator = get_collator(model_id=args.model_name_or_path,
                                 padding_side="right",
                                 token=hf_token)
-        # If the model is a GEMMA3 model, we use the processor and tokenizer from the collator
-        processor = collator.processor
     else:
         raise ValueError(
                 "You need to specify a model name or a path to a pretrained model."
@@ -123,18 +121,22 @@ def main():
     tokenized_datasets = raw_datasets.map(
             preprocess,
             batched=True,
-            batch_size=512,
-            num_proc=args.preprocessing_num_workers,
+            batch_size=256,
+            num_proc=15,
             remove_columns=column_names,
             desc="Running tokenizer on dataset",
             load_from_cache_file=False,  # ← important
             keep_in_memory=True
-
     )
+
+    tokenized_datasets['train'] = tokenized_datasets['train'].filter(lambda x: all(v is not None for v in x.values()))
+    tokenized_datasets['val'] = tokenized_datasets['val'].filter(lambda x: all(v is not None for v in x.values()))
+
     save_dataset_as_parquet(dataset_dict=tokenized_datasets,
                             output_dir='data_chexinstruct/hf_parquet_gemma_format/gemma_findings_tok',
                             name_file='tokenized'
                             )
+
 
 
 

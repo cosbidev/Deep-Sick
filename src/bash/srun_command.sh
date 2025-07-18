@@ -1,6 +1,5 @@
-screen -S my_running_srun
+srun --job-name=myjob -N 2 --cpus-per-task=4  -A NAISS2024-5-577 --gpus-per-node=A40:4 --time=1:00:00 --pty bash
 
-srun --job-name=myjob --ntasks=1 --cpus-per-task=4  -A NAISS2024-5-577 --gpus-per-node=A40:2 --time=12:00:00 --pty bash
 cd  /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick
 
 
