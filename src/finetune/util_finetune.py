@@ -3,11 +3,24 @@ from itertools import chain
 import os
 import numpy as np
 import torch
+import logging
 from torch.utils.data import Sampler
 from transformers import MODEL_MAPPING,  SchedulerType
 from transformers.trainer_pt_utils import get_length_grouped_indices as get_length_grouped_indices_hf
 MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+import torch.distributed as dist
+
+
+def rank0_print(*args):
+    if dist.is_initialized():
+        if dist.get_rank() == 0:
+            print(f"Rank {dist.get_rank()}: ", *args)
+    else:
+        print(*args)
+
+
+
 
 
 
@@ -235,7 +248,6 @@ class BlueprintGroupedSampler(Sampler):
             world_size: int,
             lengths,
             n_images,
-            image_seq_len: int = 256,
             generator=None,
             seed: int = 42
     ):
@@ -244,7 +256,6 @@ class BlueprintGroupedSampler(Sampler):
         self.world_size = world_size
         self.global_batch_size = batch_size * world_size
         self.generator = generator or torch.Generator().manual_seed(seed)
-        self.image_seq_len = image_seq_len
 
         # Safe rank detection
         try:
@@ -286,6 +297,11 @@ class BlueprintGroupedSampler(Sampler):
             # Strategia fissa: 1 campione da 2 img + 0 da 1 img = 2 immagini per GPU
             samples_2img_per_gpu = 1
             samples_1img_per_gpu = 0
+            images_per_gpu = 2
+        elif self.batch_size == 1:
+            # Strategia fissa: 1 campione da 2 img + 0 da 1 img = 2 immagini per GPU
+            samples_2img_per_gpu = 2
+            samples_1img_per_gpu = 1
             images_per_gpu = 2
         else:
             # Strategia di fallback

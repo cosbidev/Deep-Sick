@@ -63,7 +63,12 @@ def parse_args():
             required=True,
             default='google/gemma-3-4b-it',
     )
-
+    parser.add_argument(
+            "--output_dir",
+            type=str,
+            help="Path to pretrained model or model identifier from huggingface.co/models.",
+            required=True,
+    )
     parser.add_argument(
             "--preprocessing_num_workers",
             type=int,
@@ -131,13 +136,10 @@ def main():
 
     tokenized_datasets['train'] = tokenized_datasets['train'].filter(lambda x: all(v is not None for v in x.values()))
     tokenized_datasets['val'] = tokenized_datasets['val'].filter(lambda x: all(v is not None for v in x.values()))
-
     save_dataset_as_parquet(dataset_dict=tokenized_datasets,
-                            output_dir='data_chexinstruct/hf_parquet_gemma_format/gemma_findings_tok',
+                            output_dir=f'data_chexinstruct/hf_parquet_gemma_format/{args.output_dir}_findings_tok',
                             name_file='tokenized'
                             )
-
-
 
 
 if __name__ == "__main__":

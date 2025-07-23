@@ -4,26 +4,30 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.5 ] Correcting acceleratio issue. &#10;BEST s/iter 2.05-2.20 for batch size = 4 and A100-80gb.">
-      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3N-2b.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3N-4b.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/activateEnv.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/debug_multi_node.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_zero3_config_4process.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/deepspeed/ds_zero3_config_MultiNodes.yaml" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_multi_node.sh" beforeDir="false" afterPath="$PROJECT_DIR$/debug_multi_node.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero2_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_zero2_config.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero3_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_zero3_config.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/bash/srun_command.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/bash/srun_command.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero3_config_4process.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero3_config_MultiNodes.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/benchmark/benchmark_LLM.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/dataset/chexinstruct/run_format.sh" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/chexinstruct/run_format.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/accelerated_chexinstruct_gemma.sh" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/Gemma3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/Gemma3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/peft.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/peft.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/util_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/util_models.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,8 +46,16 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/.venv/lib/python3.10/site-packages/accelerate/accelerator.py" root0="SKIP_INSPECTION" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
@@ -88,20 +100,20 @@
     "WebServerToolWindowPanel.toolwindow.show.date": "false",
     "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
     "WebServerToolWindowPanel.toolwindow.show.size": "false",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick",
+    "git-widget-placeholder": "multi-node",
+    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/deepspeed",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "terminal",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/deepspeed" />
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src/finetune" />
       <recent name="$PROJECT_DIR$/src/benchmark/batch_size_compiling" />
       <recent name="$PROJECT_DIR$/src/train" />
@@ -495,8 +507,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
-        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
+        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-PY-251.26927.90" />
+        <option value="bundled-python-sdk-41e8cd69c857-64d779b69b7a-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26927.90" />
       </set>
     </attachedChunks>
   </component>
@@ -563,7 +575,12 @@
       <workItem from="1752134613819" duration="22080000" />
       <workItem from="1752303656352" duration="36077000" />
       <workItem from="1752518459196" duration="6851000" />
-      <workItem from="1752566612495" duration="81001000" />
+      <workItem from="1752566612495" duration="94272000" />
+      <workItem from="1752915624929" duration="12000" />
+      <workItem from="1752915655010" duration="322000" />
+      <workItem from="1752916678990" duration="606000" />
+      <workItem from="1753176341061" duration="16830000" />
+      <workItem from="1753257759223" duration="24652000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -781,7 +798,15 @@
       <option name="project" value="LOCAL" />
       <updated>1752700334429</updated>
     </task>
-    <option name="localTasksCounter" value="28" />
+    <task id="LOCAL-00028" summary="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE accelerate config, format_chexinstruct.py correction for any image not readeble (corrupted).">
+      <option name="closed" value="true" />
+      <created>1752831950338</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1752831950338</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -818,7 +843,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Reorganization download, src and other parts." />
     <MESSAGE value="Preprocessing, download and other stuff" />
     <MESSAGE value="Report Radiology mimic preprocessing" />
     <MESSAGE value="Preprocessing Code for mimic" />
@@ -843,7 +867,8 @@
     <MESSAGE value="[Fine-tune-accelerated 1.3 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs." />
     <MESSAGE value="[Fine-tune-accelerated 1.4 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs. A new sampler has been written, Deepspeed config file uploaded, also with the possibility to profile FLOPS" />
     <MESSAGE value="[Fine-tune-accelerated 1.5 ] Correcting acceleratio issue. &#10;BEST s/iter 2.05-2.20 for batch size = 4 and A100-80gb." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.5 ] Correcting acceleratio issue. &#10;BEST s/iter 2.05-2.20 for batch size = 4 and A100-80gb." />
+    <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE accelerate config, format_chexinstruct.py correction for any image not readeble (corrupted)." />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE accelerate config, format_chexinstruct.py correction for any image not readeble (corrupted)." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -955,6 +980,15 @@
           <url>file://$PROJECT_DIR$/src/models/VisionLanguage.py</url>
           <line>11</line>
           <option name="timeStamp" value="337" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/ReXrank/example_files/merversa_inference.py</url>
+          <line>1</line>
+          <option name="timeStamp" value="339" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/models/Gemma3.py</url>
+          <option name="timeStamp" value="340" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -1,175 +1,41 @@
-from tqdm import tqdm
-import torch
-import gc
+import logging
+def maybe_zero_3(param, ignore_status=False, name=None):
+    from deepspeed import zero
+    from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
 
-def est_flops(n_params, batch_tokens):
-    """Estimate FLOPs for forward + backward pass"""
-    # Forward: 2 * n_params * batch_tokens (matrix multiply approximation)
-    # Backward: 4 * n_params * batch_tokens (gradient computation)
-    return 6 * n_params * batch_tokens
-
-def est_vlm_flops(n_params, batch_size, image_tokens, text_tokens):
-    """Estimate FLOPs for VLM forward + backward pass"""
-    # VLM combines vision and language processing
-    # Vision forward: 2 * vision_params * batch_size * image_tokens
-    # Language forward: 2 * language_params * batch_size * text_tokens
-    # Cross-attention: 2 * cross_attn_params * batch_size * image_tokens * text_tokens
-    # Backward: ~4x forward cost
-    total_tokens = image_tokens + text_tokens + (image_tokens * text_tokens / 1000)  # Cross-attention approx
-    return 6 * n_params * batch_size * total_tokens
+    if hasattr(param, "ds_id"):
+        if param.ds_status == ZeroParamStatus.NOT_AVAILABLE:
+            if not ignore_status:
+                logging.warning(f"{name}: param.ds_status != ZeroParamStatus.NOT_AVAILABLE: {param.ds_status}")
+        with zero.GatheredParameters([param]):
+            param = param.data.detach().cpu().clone()
+    else:
+        param = param.detach().cpu().clone()
+    return param
 
 
 
-def count_tokens_worker(args):
-    """Worker function for parallel token counting"""
-    tokenizer_name, samples, text_column = args
-
-    # Import here to avoid pickling issues
-    from transformers import AutoTokenizer
-
-    # Load tokenizer in worker process
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, trust_remote_code=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    local_total_tokens = 0
-    local_valid_samples = 0
-
-    for ex in samples:
-        text = ex.get(text_column)
-        if text is None or not isinstance(text, str) or len(text.strip()) == 0:
-            continue
-        try:
-            tokens = tokenizer.encode(text, truncation=False, add_special_tokens=True)
-            local_total_tokens += len(tokens)
-            local_valid_samples += 1
-        except Exception:
-            continue
-
-    return local_total_tokens, local_valid_samples
-
-
-def count_tokens(tokenizer, dataset, text_column="text", num_workers=None):
-    """Count total tokens in dataset using parallel processing"""
-    import multiprocessing as mp
-    from concurrent.futures import ProcessPoolExecutor, as_completed
-
-    if num_workers is None:
-        num_workers = min(mp.cpu_count(), 1)  # Use up to 1 workers
-
-    dataset_size = len(dataset)
-    if dataset_size == 0:
-        return 0, 0, 0
-
-    # For small datasets, use single process
-    if num_workers == 1:
-        return count_tokens_sequential(tokenizer, dataset, text_column)
-
-    print(f"Counting tokens using {num_workers} workers...")
-
-    # Split dataset into chunks for parallel processing
-    chunk_size = max(1, dataset_size // num_workers)
-    chunks = []
-
-    for i in range(0, dataset_size, chunk_size):
-        end_idx = min(i + chunk_size, dataset_size)
-        chunk = [dataset[j] for j in range(i, end_idx)]
-        chunks.append((tokenizer.name_or_path, chunk, text_column))
-
-    total_tokens = 0
-    valid_samples = 0
-
-    # Process chunks in parallel
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        # Submit all tasks
-        future_to_chunk = {executor.submit(count_tokens_worker, chunk): i
-                           for i, chunk in enumerate(chunks)}
-
-        # Collect results with progress bar
-        with tqdm(total=len(chunks), desc="Processing chunks") as pbar:
-            for future in as_completed(future_to_chunk):
-                try:
-                    chunk_tokens, chunk_valid = future.result()
-                    total_tokens += chunk_tokens
-                    valid_samples += chunk_valid
-                    pbar.update(1)
-                except Exception as e:
-                    print(f"Warning: Failed to process chunk: {e}")
-                    pbar.update(1)
-
-    if valid_samples == 0:
-        raise ValueError(f"No valid text found in column '{text_column}'")
-
-    avg_tokens = total_tokens / valid_samples if valid_samples > 0 else 0
-    print(f"Dataset analysis (parallel processing):")
-    print(f"  - Total samples: {dataset_size}")
-    print(f"  - Valid samples: {valid_samples}")
-    print(f"  - Total tokens: {total_tokens:,}")
-    print(f"  - Average tokens per sample: {avg_tokens:.2f}")
-    print(f"  - Workers used: {num_workers}")
-
-    return total_tokens, valid_samples, avg_tokens
-
-
-def count_tokens_sequential(tokenizer, dataset, text_column="text"):
-    """Sequential token counting for small datasets or fallback"""
-    total_tokens = 0
-    valid_samples = 0
-
-    for ex in tqdm(dataset, desc="Counting tokens (sequential)"):
-        text = ex.get(text_column)
-        if text is None or not isinstance(text, str) or len(text.strip()) == 0:
-            continue
-        try:
-            tokens = tokenizer.encode(text, truncation=False, add_special_tokens=True)
-            total_tokens += len(tokens)
-            valid_samples += 1
-        except Exception as e:
-            print(f"Warning: Failed to tokenize sample: {e}")
-            continue
-
-    if valid_samples == 0:
-        raise ValueError(f"No valid text found in column '{text_column}'")
-
-    avg_tokens = total_tokens / valid_samples if valid_samples > 0 else 0
-    print(f"Dataset analysis (sequential):")
-    print(f"  - Total samples: {len(dataset)}")
-    print(f"  - Valid samples: {valid_samples}")
-    print(f"  - Total tokens: {total_tokens:,}")
-    print(f"  - Average tokens per sample: {avg_tokens:.2f}")
-
-    return total_tokens, valid_samples, avg_tokens
-
-
-def get_model_stats(model):
-    # Garbage collection per avere una lettura pulita della memoria
-    gc.collect()
-    torch.cuda.empty_cache()
-
-    device = next(model.parameters()).device
-    # Calcolo dei parametri totali e trainabili
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    trainable_fraction = trainable_params / total_params if total_params > 0 else 0.0
-
-    # Formato: dtype principale
-    dtypes = set(p.dtype for p in model.parameters())
-    dtype_str = ", ".join(str(d) for d in dtypes)
-
-    # Misurazione della memoria VRAM in uso
-    vram_used_gb = torch.cuda.memory_allocated(device) / (1024**3)
-
-    print(f"--- Model Stats ---")
-    print(f"Total parameters: {total_params:,}")
-    print(f"Trainable parameters: {trainable_params:,} ({trainable_fraction:.2%})")
-    print(f"Parameter dtype(s): {dtype_str}")
-    print(f"VRAM allocated: {vram_used_gb:.2f} GB")
-
-    return {
-        "total_params": total_params,
-        "trainable_params": trainable_params,
-        "trainable_fraction": trainable_fraction,
-        "dtype": dtype_str,
-        "vram_gb": vram_used_gb,
-    }
-
+# Borrowed from peft.utils.get_peft_model_state_dict
+def get_peft_state_maybe_zero_3(named_params, bias):
+    if bias == "none":
+        to_return = {k: t for k, t in named_params if "lora_" in k}
+    elif bias == "all":
+        to_return = {k: t for k, t in named_params if "lora_" in k or "bias" in k}
+    elif bias == "lora_only":
+        to_return = {}
+        maybe_lora_bias = {}
+        lora_bias_names = set()
+        for k, t in named_params:
+            if "lora_" in k:
+                to_return[k] = t
+                bias_name = k.split("lora_")[0] + "bias"
+                lora_bias_names.add(bias_name)
+            elif "bias" in k:
+                maybe_lora_bias[k] = t
+        for k, t in maybe_lora_bias:
+            if bias_name in lora_bias_names:
+                to_return[bias_name] = t
+    else:
+        raise NotImplementedError
+    to_return = {k: maybe_zero_3(v, ignore_status=True) for k, v in to_return.items()}
+    return to_return

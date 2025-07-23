@@ -13,613 +13,679 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Finetuning script for GEMMA3 or other causal language models using HuggingFace Transformers and Accelerate.
+Finetuning script for GEMMA3 or other causal language models using HuggingFace Transformers Trainer.
 
-This script is adapted from the official Transformers language modeling tutorial to support finetuning
-GEMMA3 and similar models on a text file or dataset, without using the HuggingFace Trainer.
-
-For more details and checkpoints, see:
-https://huggingface.co/models?filter=text-generation
+This script is converted from the accelerate-based version to use the standard Trainer API.
 """
-# You can adapt this script for your own causal language modeling tasks. See comments for pointers.
+import math
+import pathlib
 import warnings
-from torch.profiler import profile, record_function, ProfilerActivity
-warnings.filterwarnings("ignore")
-
-# import hydra TODO # to use hydra for configuration management
-# from omegaconf import DictConfig # TODO # to use hydra for configuration management
-
-from transformers.trainer_utils import seed_worker
-import argparse
+from dataclasses import dataclass, field
+from datetime import timedelta
+from typing import Optional, Union, Any
+import os
 import json
 import logging
-import math
-import os
-import random
-import datasets
+import torch.nn as nn
 import torch
-from torch.utils.data import DataLoader
-from functools import partial
 import transformers
-
-from tqdm.auto import tqdm
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
-    get_scheduler,
-    MODEL_MAPPING,
-    SchedulerType
+    Trainer,
+    TrainingArguments,
+    EarlyStoppingCallback,
+    HfArgumentParser,
 )
-
-MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
-MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
-
-from accelerate import Accelerator
-from accelerate.logging import get_logger
 from accelerate.utils import DummyOptim, DummyScheduler, set_seed
+from accelerate.utils import GradientAccumulationPlugin
+from torch.utils.data import DataLoader
+from transformers import get_scheduler
 
+from transformers.trainer_utils import seed_worker
+from transformers.trainer import is_sagemaker_mp_enabled, get_parameter_names, has_length, logger, is_accelerate_available
+# Suppress warnings
+warnings.filterwarnings("ignore")
+
+# W&B setup
+#import wandb
+
+#wandb.login(key="8be012e7c0ff0d4431216d5b3f309041178cacd4")
+
+# Import your custom modules
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
-from util_finetune import evaluate, BlueprintGroupedSampler
-
-
+from util_finetune import rank0_print, BlueprintGroupedSampler
+from accelerate import Accelerator, skip_first_batches, InitProcessGroupKwargs
+# Environment setup
 os.environ["HF_TOKEN"] = "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"
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
 os.environ["HF_DATASETS_CACHE"] = cache_dir
 os.environ["HF_HOME"] = cache_dir
 os.environ["HUGGINGFACE_HUB_CACHE"] = cache_dir
 os.environ["HF_HUB_CACHE"] = cache_dir
-os.environ["HF_TOKEN"] = "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"
 CACHE_DIR = os.path.join(os.getcwd(), "hf_models_cache")
-logger = get_logger(__name__)
+
+logger = logging.getLogger(__name__)
 hf_token = os.environ.get("HF_TOKEN", "")
 
 
-def parse_args():
-
-    parser = argparse.ArgumentParser(description="Finetune a transformers model on a causal language modeling task")
-    parser.add_argument(
-            "--dataset_name",
-            type=str,
+@dataclass
+class ModelArguments:
+    model_name_or_path: Optional[str] = field(
+            default="google/gemma-3-4b-it",
+            metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models."}
+    )
+    caching_local: bool = field(default=True, metadata={"help": "Whether to cache the model locally."})
+    model_class_name: Optional[str] = field(
             default=None,
-            help="The name of the dataset to use (via the datasets library).",
-    )
-    parser.add_argument(
-            "--dataset_dir", type=str, default=None, help="Path to a directory containing the dataset files in .parquet format."
-    )
-    parser.add_argument(
-            "--model_name_or_path",
-            type=str,
-            help="Path to pretrained model or model identifier from huggingface.co/models.",
-            required=True,
-            default='google/gemma-3-4b-it',
-    )
-    parser.add_argument("--debug", action="store_true", help="Whether to run in debug mode with fewer epochs and smaller batch size.")
-    parser.add_argument(
-            "--per_device_train_batch_size",
-            type=int,
-            default=8,
-            help="Batch size (per device) for the training dataloader.",
-    )
-    parser.add_argument(
-            "--per_device_eval_batch_size",
-            type=int,
-            default=8,
-            help="Batch size (per device) for the evaluation dataloader.",
-    )
-    parser.add_argument(
-            "--learning_rate",
-            type=float,
-            default=2e-5,
-            help="Initial learning rate (after the potential warmup period) to use.",
-    )
-    parser.add_argument(
-            "--weight_decay",
-            type=float,
-            default=0.001,
-            help="Weight decay to use.")
-
-    parser.add_argument(
-            "--num_train_epochs",
-            type=int,
-            default=3,
-            help="Total number of training epochs to perform.")
-    parser.add_argument(
-            "--max_train_steps",
-            type=int,
-            default=None,
-            help="Total number of training steps to perform. If provided, overrides num_train_epochs.",
-    )
-    parser.add_argument(
-            "--gradient_accumulation_steps",
-            type=int,
-            default=1,
-            help="Number of updates steps to accumulate before performing a backward/update pass.",
-    )
-    parser.add_argument(
-            "--lr_scheduler_type",
-            type=SchedulerType,
-            default="linear",
-            help="The scheduler type to use.",
-            choices=["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"],
-    )
-    parser.add_argument(
-            "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
-    )
-    parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
-    parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
-    parser.add_argument(
-            "--model_type",
-            type=str,
-            default=None,
-            help="Model type to use if training from scratch.",
-            choices=MODEL_TYPES,
-    )
-    parser.add_argument(
-            "--preprocessing_num_workers",
-            type=int,
-            default=None,
-            help="The number of processes to use for the preprocessing.",
+            metadata={"help": "Used to init model class, format is XXXXForCausalLM. e.g. currently XXXX is chosen from LlavaLlama, LlavaMixtral, LlavaMistral, Llama"}
     )
 
-    parser.add_argument(
-            "--checkpointing_steps",
-            type=str,
+    mm_tunable_parts: Optional[str] = field(
             default=None,
-            help="Whether the various states should be saved at the end of every n steps, or 'epoch' for each epoch.",
+            metadata={"help": 'Could be "mm_mlp_adapter", "mm_vision_resampler", "mm_vision_tower,mm_mlp_adapter,mm_language_model", etc.'}
     )
-    parser.add_argument(
-            "--save_every_n_epochs",
-            type=int,
+    freeze_backbone: bool = field(default=False)
+    mm_projector_type: Optional[str] = field(default="linear")
+    mm_use_im_start_end: bool = field(default=False)
+    mm_use_im_patch_token: bool = field(default=True)
+    mm_patch_merge_type: Optional[str] = field(default="flat")
+    mm_resampler_type: Optional[str] = field(default=None)
+    mm_spatial_pool_stride: Optional[int] = field(default=None)
+    mm_spatial_pool_mode: str = field(default="bilinear")
+    mm_spatial_pool_out_channels: Optional[int] = field(default=None)
+    rope_scaling_factor: Optional[float] = field(default=None)
+    rope_scaling_type: Optional[str] = field(default=None)
+    use_pos_skipping: Optional[bool] = field(default=False)
+    pos_skipping_range: Optional[int] = field(default=2048)
+    mm_newline_position: Optional[str] = field(default="grid")
+    delay_load: Optional[bool] = field(default=True)
+    add_faster_video: Optional[bool] = field(default=False)
+    faster_token_stride: Optional[int] = field(default=10)
+
+
+@dataclass
+class DataArguments:
+    dataset_name: Optional[str] = field(
             default=None,
-            help="Save a model checkpoint every n epochs (in addition to other checkpointing logic)."
+            metadata={"help": "The name of the dataset to use (via the datasets library - or - local function for parquet chexinstruct)."}
     )
-    parser.add_argument(
-            "--resume_from_checkpoint",
-            type=str,
+    dataset_dir: Optional[str] = field(
             default=None,
-            help="If the training should continue from a checkpoint folder.",
+            metadata={"help": "Path to a directory containing the dataset files in .parquet format."}
     )
-    # New Code #
-    # Whether to load the best model at the end of training
-    parser.add_argument(
-            "--load_best_model",
-            action="store_true",
-            help="Whether to load the best model at the end of training",
+    data_path: str = field(
+            default=None,
+            metadata={"help": "Path to the training data, in llava's instruction.json format. Supporting multiple json files via /path/to/{a,b,c}.json"}
     )
-    parser.add_argument(
-            "--with_tracking",
-            action="store_true",
-            help="Whether to enable experiment trackers for logging.",
-    )
-    parser.add_argument(
-            "--report_to",
-            type=str,
-            default="all",
-            help=(
-                    'The integration to report the results and logs to. Supported platforms are `"tensorboard"`,'
-                    ' `"wandb"`, `"comet_ml"`, `"dvclive"`, and `"swanlab"`. Use `"all"` (default) to report to all integrations.'
-                    "Only applicable when `--with_tracking` is passed."
-            ),
-    )
-    args = parser.parse_args()
-
-    return args
+    lazy_preprocess: bool = False
+    is_multimodal: bool = False
+    early_mix_text: bool = False
+    image_folder: Optional[str] = field(default=None)
+    image_aspect_ratio: str = "square"
+    image_grid_pinpoints: Optional[str] = field(default=None)
+    image_crop_resolution: Optional[int] = field(default=None)
+    image_split_resolution: Optional[int] = field(default=None)
+    data_debug: bool = field(default=False, metadata={"help": "Whether to run in debug mode with fewer epochs and smaller batch size."})
 
 
-# @hydra.main(version_base="v1.3", config_path="../../configs/PEFT_runs", config_name="config") # TODO # to use hydra for configuration management
-def main():
-    args = parse_args()
 
-    # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
-    # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
-    # in the environment
-    # ----------------------------------- Accelerator Initialization -----------------------------------
-    accelerator = (
-            Accelerator(
-                    log_with=args.report_to,
-                    project_dir=args.output_dir,
-                    gradient_accumulation_steps=args.gradient_accumulation_steps,
+    preprocessing_num_workers: Optional[int] = field(
+            default=None,
+            metadata={"help": "The number of processes to use for the preprocessing."}
+    )
+    cache_dir: Optional[str] = field(default=CACHE_DIR, metadata={"help": "Path to a directory where the model will be cached."})
+
+@dataclass
+class CustomTrainingArguments(TrainingArguments):
+    # Model configuration
+
+    model_max_length: int = field(
+            default=2048,
+            metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
+    )
+    attn_implementation: str = field(default="flash_attention_2", metadata={"help": "Use transformers attention implementation."})
+
+    # LoRA/PEFT configuration
+    lora_enable: bool = field(default=True, metadata={"help": "Whether to enable LoRA training."})
+    lora_r: int = field(default=64, metadata={"help": "Rank for LoRA layers."})
+    lora_alpha: int = field(default=16, metadata={"help": "LoRA alpha."})
+    lora_dropout: float = field(default=0.05, metadata={"help": "LoRA dropout."})
+    lora_weight_path: str = field(default="", metadata={"help": "Path to LoRA weights."})
+    lora_bias: str = field(default="none", metadata={"help": "LoRA bias."})
+    peft_strategy: str = field(default="lora_gaussian", metadata={"help": "PEFT strategy to use."})
+
+    # Training configuration
+    max_train_steps: int = field(default=None, metadata={"help": "Total number of training steps to perform. If provided, overrides num_train_epochs."})
+    num_warmup_steps: int = field(
+            default=1000,
+            metadata={"help": "Number of warmup steps for the learning rate scheduler."}
+    )
+    # Multimodal training configuration
+    freeze_multimodal: bool = field(default=True, metadata={"help": "Whether to freeze the multimodal model."})
+    finetune_vision_layers: bool = field(default=False, metadata={"help": "Whether to finetune the vision layers."})
+    finetune_language_layers: bool = field(default=True, metadata={"help": "Whether to finetune the language layers."})
+    finetune_attention_modules: bool = field(default=True, metadata={"help": "Whether to finetune the attention modules."})
+    finetune_mlp_modules: bool = field(default=True, metadata={"help": "Whether to finetune the MLP modules."})
+
+
+    # Training configuration
+    verbose_logging: bool = field(default=False, metadata={"help": "Whether to enable verbose logging."})
+
+
+
+    # Trainer defaults that match your original configuration
+    optim: str = field(default="adamw_torch")
+    remove_unused_columns: bool = field(default=False)
+    gradient_checkpointing: bool = field(default=False)
+    dataloader_num_workers: int = field(
+            default=0,
+            metadata={"help": "Number of data loader workers. Set to 0 to disable multiprocessing and avoid pickling errors."}
+    )
+    # If using pin memory, keep it
+    dataloader_pin_memory: bool = field(default=True)
+    blueprint_sampler: bool = field(default=True, metadata={"help": "Use BlueprintGroupedSampler for training."})
+    # Evaluation and saving
+    evaluation_strategy: str = field(default="epoch")
+    save_strategy: str = field(default="epoch")
+    logging_strategy: str = field(default="steps")
+    logging_steps: int = field(default=10)
+    save_total_limit: int = field(default=3)
+    load_best_model_at_end: bool = field(default=False)
+    metric_for_best_model: str = field(default="eval_loss")
+    greater_is_better: bool = field(default=False)
+    # W&B integration
+    report_to: str = field(default="wandb")
+
+
+
+class CustomTrainer(Trainer):
+    """Custom Trainer class to handle multimodal training specifics."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+    def create_accelerator_and_postprocess(self):
+
+        grad_acc_kwargs = {"num_steps": self.args.gradient_accumulation_steps}
+        grad_acc_kwargs["sync_with_dataloader"] = False
+        gradient_accumulation_plugin = GradientAccumulationPlugin(**grad_acc_kwargs)
+
+        accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
+        rank0_print("Setting NCCL timeout to INF to avoid running errors.")
+
+
+        # create accelerator object
+        self.accelerator = Accelerator(
+           deepspeed_plugin=self.args.deepspeed_plugin, gradient_accumulation_plugin=gradient_accumulation_plugin, kwargs_handlers=[accelerator_kwargs]
+        )
+        # some Trainer classes need to use `gather` instead of `gather_for_metrics`, thus we store a flag
+        self.gather_function = self.accelerator.gather_for_metrics
+
+        # deepspeed and accelerate flags covering both trainer args and accelerate launcher
+        self.is_deepspeed_enabled = getattr(self.accelerator.state, "deepspeed_plugin", None) is not None
+        self.is_fsdp_enabled = getattr(self.accelerator.state, "fsdp_plugin", None) is not None
+
+        # post accelerator creation setup
+        if self.is_fsdp_enabled:
+            fsdp_plugin = self.accelerator.state.fsdp_plugin
+            fsdp_plugin.limit_all_gathers = self.args.fsdp_config.get("limit_all_gathers", fsdp_plugin.limit_all_gathers)
+            if is_accelerate_available("0.23.0"):
+                fsdp_plugin.activation_checkpointing = self.args.fsdp_config.get("activation_checkpointing", fsdp_plugin.activation_checkpointing)
+                if fsdp_plugin.activation_checkpointing and self.args.gradient_checkpointing:
+                    raise ValueError("The activation_checkpointing in FSDP config and the gradient_checkpointing in training arg " "can't be set to True simultaneously. Please use FSDP's activation_checkpointing logic " "when using FSDP.")
+
+        if self.is_deepspeed_enabled and getattr(self.args, "hf_deepspeed_config", None) is None:
+            self.propagate_args_to_deepspeed()
+
+    def is_tp_enabled(self):
+        return super().is_tp_enabled
+
+
+    def compute_loss(self,
+        model: nn.Module,
+        inputs: dict[str, Union[torch.Tensor, Any]],
+        return_outputs: bool = False,
+        num_items_in_batch: Optional[torch.Tensor] = None,):
+        """
+        Custom loss computation that handles multimodal inputs.
+        """
+        outputs = model(**inputs)
+        loss = outputs.loss
+
+        return (loss, outputs) if return_outputs else loss
+
+    def _get_train_sampler(self) -> Optional[torch.utils.data.Sampler]:
+        if self.train_dataset is None or not has_length(self.train_dataset):
+            return None
+
+        if self.args.blueprint_sampler:
+            return  BlueprintGroupedSampler(
+                    batch_size=self.args.per_device_train_batch_size,
+                    world_size=self.accelerator.num_processes,
+                    lengths=self.train_dataset["length"],
+                    n_images=self.train_dataset["n_of_images"],
             )
-            if args.with_tracking
-            else Accelerator(
-                    gradient_accumulation_steps=args.gradient_accumulation_steps,
-            )
+        else:
+
+            return self._get_train_sampler()
+
+
+    # def create_scheduler(self, num_training_steps: int, optimizer: torch.optim.Optimizer = None):
+    #     if (
+    #             self.accelerator.state.deepspeed_plugin is None
+    #             or "scheduler" not in self.accelerator.state.deepspeed_plugin.deepspeed_config
+    #     ):
+    #         lr_scheduler = get_scheduler(
+    #                 name=self.args.lr_scheduler_type,
+    #                 optimizer=self.optimizer,
+    #                 num_warmup_steps=self.args.num_warmup_steps,
+    #                 num_training_steps=self.args.max_train_steps,
+    #         )
+    #     else:
+    #         lr_scheduler = DummyScheduler(
+    #                 optimizer, total_num_steps=self.args.max_train_steps, warmup_num_steps=self.args.num_warmup_steps
+    #         )
+    #
+    #     self.lr_scheduler = lr_scheduler
+    #
+    #     return self.lr_scheduler
+
+
+
+
+
+    def _save(self, output_dir: Optional[str] = None, state_dict=None):
+        """Override save to handle PEFT models properly."""
+        output_dir = output_dir if output_dir is not None else self.args.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Save the model
+        if hasattr(self.model, 'save_pretrained'):
+            self.model.save_pretrained(output_dir, state_dict=state_dict)
+        else:
+            # Fallback for wrapped models
+            unwrapped_model = self.accelerator.unwrap_model(self.model)
+            unwrapped_model.save_pretrained(output_dir, state_dict=state_dict)
+
+        # Save the tokenizer
+        if self.tokenizer is not None:
+            self.tokenizer.save_pretrained(output_dir)
+
+    def get_train_dataloader(self) -> DataLoader:
+        """
+        Returns the training [`~torch.utils.data.DataLoader`].
+
+        Will use no sampler if `train_dataset` does not implement `__len__`, a random sampler (adapted to distributed
+        training if necessary) otherwise.
+
+        Subclass and override this method if you want to inject some custom behavior.
+        """
+        if self.train_dataset is None:
+            raise ValueError("Trainer: training requires a train_dataset.")
+
+        train_dataset = self.train_dataset
+        data_collator = self.data_collator
+
+        dataloader_params = {
+            "batch_size": self._train_batch_size,
+            "collate_fn": data_collator,
+            "num_workers": self.args.dataloader_num_workers,
+            "pin_memory": self.args.dataloader_pin_memory,
+            "persistent_workers": self.args.dataloader_persistent_workers,
+        }
+
+
+        if not isinstance(train_dataset, torch.utils.data.IterableDataset):
+            dataloader_params["drop_last"] = self.args.dataloader_drop_last
+            dataloader_params["sampler"] = self._get_train_sampler()
+            dataloader_params["worker_init_fn"] = seed_worker
+            dataloader_params["prefetch_factor"] = self.args.dataloader_num_workers * 2 if self.args.dataloader_num_workers != 0 else None
+
+        dataloader = self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
+
+
+        num_update_steps_per_epoch = math.ceil(len(dataloader) / self.accelerator.gradient_accumulation_steps)
+        if self.args.max_train_steps is None:
+            self.args.max_train_steps = self.args.num_train_epochs * num_update_steps_per_epoch
+        else:
+            self.args.num_train_epochs = math.ceil(self.args.max_train_steps / num_update_steps_per_epoch)
+
+
+        return dataloader
+
+
+    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
+        """Custom evaluation with perplexity calculation."""
+        eval_results = super().evaluate(eval_dataset, ignore_keys, metric_key_prefix)
+
+        # Calculate perplexity from eval_loss
+        import math
+        if f"{metric_key_prefix}_loss" in eval_results:
+            try:
+                perplexity = math.exp(eval_results[f"{metric_key_prefix}_loss"])
+                eval_results[f"{metric_key_prefix}_perplexity"] = perplexity
+            except OverflowError:
+                eval_results[f"{metric_key_prefix}_perplexity"] = float("inf")
+
+        return eval_results
+
+
+
+
+def setup_logging(training_args):
+    """Setup logging configuration."""
+    logging.basicConfig(
+            format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            datefmt="%m/%d/%Y %H:%M:%S",
+            level=logging.INFO if training_args.local_rank in [-1, 0] else logging.WARN,
     )
 
-    # ----------------------------------- Dataset Loading -----------------------------------
-    if args.dataset_dir is not None:
-        if os.path.exists(args.dataset_dir + '_tok'):
-            args.dataset_dir = args.dataset_dir + '_tok'
+    if training_args.local_rank in [-1, 0]:
+        transformers.utils.logging.set_verbosity_info()
+    else:
+        transformers.utils.logging.set_verbosity_error()
+
+
+def load_and_prepare_datasets(data_args):
+    """Load and prepare the datasets."""
+    if data_args.dataset_dir is not None:
+        if os.path.exists(data_args.dataset_dir + '_tok'):
+            data_args.dataset_dir = data_args.dataset_dir + '_tok'
         else:
             raise ValueError('The dataset directory does not exist in tok version. Please create the format_code.')
 
         raw_datasets = load_parquet_image_dataset(
-                dataset_dir=args.dataset_dir,
+                dataset_dir=data_args.dataset_dir,
                 split_list=["train", "val"],
-                cache_dir=cache_dir,# Specify the split you want to use ['test', 'val', 'train']
-                keep_in_memory = True,
-                num_proc=args.preprocessing_num_workers,
+                cache_dir=data_args.cache_dir,
+                keep_in_memory=True,
+                num_proc=data_args.preprocessing_num_workers,
         )
-        
-        if args.debug:
+
+
+
+        if data_args.data_debug:
             # Reduce the dataset size for debugging purposes
             for split in raw_datasets.keys():
-                raw_datasets[split] = raw_datasets[split].select(range(100))
+                raw_datasets[split] = raw_datasets[split].select(range(500))
 
-
-    if args.dataset_name is None and args.dataset_dir is None:
+    elif data_args.dataset_name is None:
         raise ValueError(
                 "You need to specify either a dataset name or a dataset directory. "
                 "Use --dataset_name for a HF dataset or --dataset_dir to specify the dataset folder in local (parquet)."
         )
 
-    train_dataset = raw_datasets["train"]
-    eval_dataset = raw_datasets["val"]
+    return raw_datasets["train"], raw_datasets["val"]
 
 
+def setup_model_and_config(model_args, training_args, data_args):
+    """Setup model configuration and load the model."""
+    assert model_args.model_name_or_path, "You need to specify a model name or path"
 
-    # ---------------------- CONFIGURATION MODEL -----------------------------------
-    # Make one log on every process with the configuration for debugging.
-    logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-            datefmt="%m/%d/%Y %H:%M:%S",
-            level=logging.INFO,
+    # Load configuration
+    config = AutoConfig.from_pretrained(model_args.model_name_or_path)
+
+    # Attention implementation check
+    if training_args.attn_implementation == "sdpa" and torch.__version__ < "2.1.2":
+        raise ValueError("The 'sdpa' attention implementation requires torch version 2.1.2 or higher.")
+
+    # Configuration overrides
+    customized_kwargs = dict()
+    cfg_pretrained = None
+    overwrite_config = {}
+
+    # Handle rope scaling and other configurations
+    if any([
+            model_args.rope_scaling_factor is not None,
+            model_args.rope_scaling_type is not None,
+            model_args.mm_spatial_pool_stride is not None,
+            model_args.mm_spatial_pool_out_channels is not None,
+            model_args.mm_spatial_pool_mode is not None,
+            model_args.mm_resampler_type is not None,
+    ]):
+        cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+
+    if model_args.use_pos_skipping is not None and model_args.pos_skipping_range is not None:
+        overwrite_config["use_pos_skipping"] = model_args.use_pos_skipping
+        overwrite_config["pos_skipping_range"] = model_args.pos_skipping_range
+
+    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+        overwrite_config["rope_scaling"] = {
+                "factor": model_args.rope_scaling_factor,
+                "type"  : model_args.rope_scaling_type,
+        }
+        if training_args.model_max_length is None:
+            training_args.model_max_length = cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor
+            overwrite_config["max_sequence_length"] = training_args.model_max_length
+
+    if all([
+            model_args.mm_spatial_pool_stride is not None,
+            model_args.mm_spatial_pool_out_channels is not None,
+            model_args.mm_spatial_pool_mode is not None,
+            model_args.mm_resampler_type is not None
+    ]):
+        overwrite_config.update({
+                "mm_resampler_type"           : model_args.mm_resampler_type,
+                "mm_spatial_pool_stride"      : model_args.mm_spatial_pool_stride,
+                "mm_spatial_pool_out_channels": model_args.mm_spatial_pool_out_channels,
+                "mm_spatial_pool_mode"        : model_args.mm_spatial_pool_mode,
+        })
+
+    if overwrite_config:
+        rank0_print(f"Overwriting config with {overwrite_config}")
+        for k, v in overwrite_config.items():
+            setattr(cfg_pretrained, k, v)
+        customized_kwargs["config"] = cfg_pretrained
+
+    # Load model
+    model = AutoModelForCausalLM.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            cache_dir=data_args.cache_dir,
+            **customized_kwargs
     )
-    logger.info(accelerator.state, main_process_only=False)
-    if accelerator.is_local_main_process:
-        datasets.utils.logging.set_verbosity_warning()
-        transformers.utils.logging.set_verbosity_info()
-    else:
-        datasets.utils.logging.set_verbosity_error()
-        transformers.utils.logging.set_verbosity_error()
+
+    # if model_args.freeze_backbone:
+    #     model.model.requires_grad_(False)
 
 
-    # If passed along, set the training seed now.
-    if args.seed is not None:
-        set_seed(args.seed)
-
-    # Load pretrained model and tokenizer
-    #
-    # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
-    # download model & vocab.
-
-    assert args.model_name_or_path, "You need to specify a model name or path with --model_name_or_path"
-    config = AutoConfig.from_pretrained(args.model_name_or_path)
-
-    if args.model_name_or_path:
-        # Get the text column names for the training and evaluation datasets
-        collator = get_collator(model_id=args.model_name_or_path,
-                                padding_side="right",
-                                token=hf_token)
-        # If the model is a GEMMA3 model, we use the processor and tokenizer from the collator
-        processor = collator.processor
-        tokenizer = processor.tokenizer
-        logger.info(f"Using processor: {processor} and tokenizer: {tokenizer}")
-
-        model = AutoModelForCausalLM.from_pretrained(
-                args.model_name_or_path,
-                from_tf=bool(".ckpt" in args.model_name_or_path),
-                config=config,
-                cache_dir=CACHE_DIR
-        )
-        # TODO create the config for the peft in the args
+    # Configure PEFT/LoRA
+    if training_args.lora_enable:
         model = configure_model_for_training(
                 model,
-                strategy="lora_gaussian",
-                r=64,  # Larger = higher accuracy, but might overfit
-                lora_alpha=16,  # Recommended alpha == r at least
-                lora_dropout=0.05,
-                bias="none",
-                freeze_multimodal=True,
-                finetune_vision_layers=False,
-                finetune_language_layers=True,
-                finetune_attention_modules=True,
-                finetune_mlp_modules=True,
-        )
-    else:
-        logger.info("Training new model from scratch")
-        model = AutoModelForCausalLM.from_config(config, cache_dir=CACHE_DIR)
-
-
-    # Log a few random samples from the training set:
-    for index in random.sample(range(len(train_dataset)), 3):
-        logger.info(f"Sample {index} of the training set: {train_dataset[index]['texts']}.")
-    try:
-        # Obtain the world Size:
-        sampler_train = BlueprintGroupedSampler(
-                batch_size=args.per_device_train_batch_size,
-                world_size=accelerator.num_processes,
-                lengths=train_dataset["length"],
-                n_images=train_dataset["n_of_images"],
-                image_seq_len=256
+                strategy=training_args.peft_strategy,
+                r=training_args.lora_r,
+                lora_alpha=training_args.lora_alpha,
+                lora_dropout=training_args.lora_dropout,
+                bias=training_args.lora_bias,
+                freeze_multimodal=training_args.freeze_multimodal,
+                finetune_vision_layers=training_args.finetune_vision_layers,
+                finetune_language_layers=training_args.finetune_language_layers,
+                finetune_attention_modules=training_args.finetune_attention_modules,
+                finetune_mlp_modules=training_args.finetune_mlp_modules,
         )
 
-        sampler_val = BlueprintGroupedSampler(
-                batch_size=args.per_device_eval_batch_size,
-                world_size=accelerator.num_processes,
-                lengths=eval_dataset["length"],
-                n_images=eval_dataset["n_of_images"],
-                image_seq_len=256
-        )
-
-
-
-        # Crea una versione parziale della funzione con i parametri fissi
-        fixed_seed_worker = partial(seed_worker, num_workers=4, rank=accelerator.process_index)
-        # New Code #
-        # DataLoaders creation:
-        train_dataloader = DataLoader(
-                train_dataset,
-                sampler= sampler_train,
-                collate_fn=collator,
-                drop_last=True,
-                worker_init_fn=fixed_seed_worker,
-                batch_size=args.per_device_train_batch_size,
-                pin_memory=True,
-        )
-        eval_dataloader = DataLoader(
-                eval_dataset,
-                sampler=sampler_val,
-                collate_fn=collator,
-                drop_last=True,
-                batch_size=args.per_device_eval_batch_size,
-        )
-    except Exception as e:
-        logger.error(
-                "There was an issue creating the dataloaders. Please check your dataset and collator configuration."
-        )
-        raise
-
-    tester = next(iter(eval_dataloader))
-
-    # Optimizer
-    # Split weights in two groups, one with weight decay and the other not.
-    no_decay = ["bias", "LayerNorm.weight"]
-    optimizer_grouped_parameters = [
-            {
-                    "params"      : [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-                    "weight_decay": args.weight_decay,
-            },
-            {
-                    "params"      : [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-                    "weight_decay": 0.0,
-            },
-    ]
-    # New Code #
-    # Creates Dummy Optimizer if `optimizer` was specified in the config file else creates Adam Optimizer
-    optimizer_cls = (
-            torch.optim.AdamW
-            if accelerator.state.deepspeed_plugin is None
-               or "optimizer" not in accelerator.state.deepspeed_plugin.deepspeed_config
-            else DummyOptim
-    )
-    optimizer = optimizer_cls(optimizer_grouped_parameters, lr=args.learning_rate)
-
-    # Scheduler and math around the number of training steps.
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / accelerator.gradient_accumulation_steps)
-    overrode_max_train_steps = False
-    if args.max_train_steps is None:
-        args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
-        overrode_max_train_steps = True
-    else:
-        args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
-
-    # New Code #
-    # Creates Dummy Scheduler if `scheduler` was specified in the config file else creates `args.lr_scheduler_type` Scheduler
-    if (
-            accelerator.state.deepspeed_plugin is None
-            or "scheduler" not in accelerator.state.deepspeed_plugin.deepspeed_config
-    ):
-        lr_scheduler = get_scheduler(
-                name=args.lr_scheduler_type,
-                optimizer=optimizer,
-                num_warmup_steps=args.num_warmup_steps,
-                num_training_steps=args.max_train_steps,
-        )
-    else:
-        lr_scheduler = DummyScheduler(
-                optimizer, total_num_steps=args.max_train_steps, warmup_num_steps=args.num_warmup_steps
-        )
-
+    if hasattr(model, 'gradient_checkpointing_enable'):
+        model.gradient_checkpointing_disable()
+    # Set hidden size for compatibility
     try:
         model.config.hidden_size = model.model.language_model.embed_tokens.embedding_dim
     except:
         model.config.hidden_size = 2560
 
+    return model
+
+def create_optimizers(model, training_args):
+    """
+    Setup the optimizer.
+
+    We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
+    Trainer's init through `optimizers`, or subclass and override this method in a subclass.
+    """
 
 
-    # Prepare everything with our `accelerator`.
-    model, optimizer, train_dataloader, eval_dataloader, lr_scheduler = accelerator.prepare(
-            model, optimizer, train_dataloader, eval_dataloader, lr_scheduler
+
+
+
+
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+            {
+                    "params"      : [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                    "weight_decay": training_args.weight_decay,
+            },
+            {
+
+                    "params"      : [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+                    "weight_decay": 0.0,
+            },
+    ]
+
+    # New Code #
+    # Creates Dummy Optimizer if `optimizer` was specified in the config file else creates Adam Optimize
+    optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=training_args.learning_rate)
+
+    if getattr(training_args, "adam_epsilon", None) is not None:
+        lr_scheduler = get_scheduler(
+                name=training_args.lr_scheduler_type,
+                optimizer=optimizer,
+                num_warmup_steps=training_args.num_warmup_steps,
+                num_training_steps=training_args.max_train_steps,
+        )
+    else:
+        # If no `adam_epsilon` is specified, we use a DummyScheduler
+        lr_scheduler = DummyScheduler(
+                optimizer, total_num_steps=training_args.max_train_steps, warmup_num_steps=training_args.num_warmup_steps
+        )
+
+    # TODO {if optimizer_cls.__name__ == "Adam8bit": IMPLEMENT bitsandbytes optimization for 8-bit Adam optimizer ? @secondary
+    return optimizer, lr_scheduler
+
+
+def main():
+    # Parse arguments
+    parser = HfArgumentParser((ModelArguments, DataArguments, CustomTrainingArguments))
+    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
+    # Setup logging
+    setup_logging(training_args)
+
+
+    # Verbose logging
+    if training_args.verbose_logging:
+        rank0_print(f"Inspecting experiment hyperparameters:\n")
+        rank0_print(f"model_args = {vars(model_args)}\n")
+        rank0_print(f"data_args = {vars(data_args)}\n")
+        rank0_print(f"training_args = {vars(training_args)}\n")
+
+    # Set seed for reproducibility
+    if training_args.seed is not None:
+        transformers.set_seed(training_args.seed)
+
+    # Load datasets
+    train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
+
+
+    # Setup model and tokenizer/processor
+    model = setup_model_and_config(
+            model_args=model_args,
+            training_args=training_args,
+            data_args=data_args)
+
+
+    # Get collator and tokenizer
+    collator = get_collator(
+            model_id=model_args.model_name_or_path,
+            padding_side="left",
+            token=hf_token
     )
-    # We need to recalculate our total training steps as the size of the training dataloader may have changed.
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / accelerator.gradient_accumulation_steps)
-    if overrode_max_train_steps:
-        args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
-    # Afterwards we recalculate our number of training epochs
-    args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
+    processor = collator.processor
+    tokenizer = processor.tokenizer
 
-    # Figure out how many steps we should save the Accelerator states
-    checkpointing_steps = args.checkpointing_steps
-    if checkpointing_steps is not None and checkpointing_steps.isdigit():
-        checkpointing_steps = int(checkpointing_steps)
 
-    # We need to initialize the trackers we use, and also store our configuration.
-    # The trackers initializes automatically on the main process.
-    if args.with_tracking:
-        experiment_config = vars(args)
-        # TensorBoard cannot log Enums, need the raw value
-        experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
-        accelerator.init_trackers("clm_no_trainer", experiment_config)
 
-    # Train!
-    total_batch_size = (
-            args.per_device_train_batch_size * accelerator.num_processes * accelerator.gradient_accumulation_steps
+    logger.info(f"Using processor: {processor} and tokenizer: {tokenizer}")
+
+    # Log sample data
+    import random
+    for index in random.sample(range(len(train_dataset)), min(3, len(train_dataset))):
+        logger.info(f"Sample {index} of the training set: {train_dataset[index]['texts']}.")
+
+    # Initialize W&B run name
+    if training_args.report_to == "wandb":
+        run_name = f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}'
+        os.environ["WANDB_PROJECT"] = run_name
+
+    # Setup callbacks
+    callbacks = []
+    if training_args.load_best_model_at_end:
+        callbacks.append(EarlyStoppingCallback(early_stopping_patience=2))
+
+    num_update_steps_per_epoch = math.ceil(len(train_dataset) / training_args.gradient_accumulation_steps)
+    if training_args.max_train_steps is None:
+        training_args.max_train_steps = training_args.num_train_epochs * num_update_steps_per_epoch
+    else:
+        training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
+
+
+    # Initialize trainer
+    trainer = CustomTrainer(
+            optimizers=create_optimizers(model, training_args),
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            tokenizer=tokenizer,
+            data_collator=collator,
+            callbacks=callbacks,
     )
 
+
+    # Training
     logger.info("***** Running training *****")
     logger.info(f"  Num examples = {len(train_dataset)}")
-    logger.info(f"  Num Epochs = {args.num_train_epochs}")
-    logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-    logger.info(f"  Gradient Accumulation steps = {accelerator.gradient_accumulation_steps}")
-    logger.info(f"  Total optimization steps = {args.max_train_steps}")
-    # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
-    completed_steps = 0
-    starting_epoch = 0
-    best_metric = None
-    best_metric_checkpoint = None
+    logger.info(f"  Num Epochs = {training_args.num_train_epochs}")
+    logger.info(f"  Instantaneous batch size per device = {training_args.per_device_train_batch_size}")
+    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {training_args.train_batch_size}")
+    logger.info(f"  Gradient Accumulation steps = {training_args.gradient_accumulation_steps}")
 
-    # Load in the weights and states from a previous save
-    if args.resume_from_checkpoint:
-        accelerator.load_state(args.resume_from_checkpoint)
-        accelerator.print(f"Resumed from checkpoint: {args.resume_from_checkpoint}")
-        path = os.path.basename(args.resume_from_checkpoint)
-        training_difference = os.path.splitext(path)[0]
-
-        if "epoch" in training_difference:
-            starting_epoch = int(training_difference.replace("epoch_", "")) + 1
-            resume_step = None
-            completed_steps = starting_epoch * num_update_steps_per_epoch
-        else:
-            resume_step = int(training_difference.replace("step_", ""))
-            starting_epoch = resume_step // num_update_steps_per_epoch
-            resume_step -= starting_epoch * num_update_steps_per_epoch
-            completed_steps = resume_step
-
-    # update progress bar if resumed from checkpoint
-    progress_bar.update(completed_steps)
-
-    for epoch in range(starting_epoch, args.num_train_epochs):
-        model.train()
-        if args.with_tracking:
-            total_loss = 0
-
-        # skip new `skip_first_batches` to skip the batches when resuming from ckpt
-        if args.resume_from_checkpoint and epoch == starting_epoch and resume_step is not None:
-            # We need to skip steps until we reach the resumed step
-            active_dataloader = accelerator.skip_first_batches(train_dataloader, resume_step)
-        else:
-            # After the first iteration though, we need to go back to the original dataloader
-            active_dataloader = train_dataloader
-        for step, batch in enumerate(active_dataloader):
-            # In particular, DeepSpeed handles `gradient_accumulation` via `DeepSpeedEngine`.
-            # Below, we use `accelerator.accumulate` if the user
-            # wants to switch to other approaches such as plain DDP, PyTorch FSDP ...
-            # This avoids having to change any code as things are all handled across different distributed setups.
-            with accelerator.accumulate(model):
+    # Check if resuming from checkpoint
+    checkpoint = None
+    if training_args.resume_from_checkpoint is not None:
+        checkpoint = training_args.resume_from_checkpoint
 
 
+    if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")) and checkpoint:
+        train_result = trainer.train(resume_from_checkpoint=True)
+    else:
+        trainer.train()
+    trainer.save_state()
 
-                outputs = model(**batch)
-                loss = outputs.loss
-                accelerator.backward(loss)
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-                if accelerator.sync_gradients:
-                    progress_bar.update(1)
-                    completed_steps += 1
+    # Save model
+    trainer.save_model()
 
-                    # Cache flush sincronizzato solo quando necessario
-                if step % 5 == 0:
+    # Save training metrics
+    metrics = train_result.metrics
+    trainer.log_metrics("train", metrics)
+    trainer.save_metrics("train", metrics)
+    trainer.save_state()
 
-                    accelerator.wait_for_everyone()
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-            # print(f"[DEBUG] PIXEL_VALUES shape: {batch['pixel_values'].shape}+ {batch['pixel_values'].device} + {completed_steps}")
-            # We keep track of the loss at each epoch
-            if args.with_tracking:
-                step_loss = accelerator.reduce(loss.detach().clone()).item()
-                total_loss += step_loss
+    # Final evaluation
+    logger.info("***** Running final evaluation *****")
+    eval_results = trainer.evaluate()
+    trainer.log_metrics("eval", eval_results)
+    trainer.save_metrics("eval", eval_results)
 
-            if isinstance(checkpointing_steps, int):
-                if completed_steps % checkpointing_steps == 0:
-                    output_dir = f"step_{completed_steps}"
-                    if args.output_dir is not None:
-                        output_dir = os.path.join(args.output_dir, output_dir)
-                    accelerator.save_state(output_dir)
-            if completed_steps >= args.max_train_steps:
-                break
+    # Save final results
+    if training_args.local_rank in [-1, 0]:
+        with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
+            final_results = {**metrics, **eval_results}
+            json.dump(final_results, f, indent=2)
 
-        perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator, eval_dataset)
-
-
-        if args.with_tracking:
-            accelerator.log(
-                    {
-                            "perplexity": perplexity,
-                            "eval_loss" : eval_loss,
-                            "train_loss": total_loss / len(train_dataloader),
-                            "epoch"     : epoch,
-                            "step"      : completed_steps,
-                    },
-                    step=completed_steps,
-            )
-
-        # Save every N epochs (if specified)
-        if args.save_every_n_epochs is not None:
-            if (epoch + 1) % args.save_every_n_epochs == 0:
-                save_path = os.path.join(args.output_dir, f"epoch_every_{epoch}")
-                accelerator.save_state(save_path)
-                accelerator.print(f"Saved checkpoint every_n_epochs at: {save_path}")
-
-        if isinstance(checkpointing_steps, str) and checkpointing_steps == "epoch":
-            accelerator.save_state(os.path.join(args.output_dir, f"epoch_{epoch}"))
-
-        # New Code #
-        # Tracks the best checkpoint and best metric
-        if best_metric is None or best_metric > perplexity:
-            best_metric = perplexity
-            best_metric_checkpoint = os.path.join(args.output_dir, "best_checkpoint")
-            accelerator.save_state(best_metric_checkpoint)
-            accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
-            accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
-
-    # New Code #
-    # Loads the best checkpoint after the training is finished
-    if args.load_best_model:
-        accelerator.load_state(best_metric_checkpoint)
-
-    # New Code #
-    # Evaluates using the best checkpoint
-    perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator, eval_dataset)
-    logger.info(f"Best model metrics: perplexity: {perplexity} eval_loss: {eval_loss}")
-    if perplexity != best_metric:
-        raise AssertionError(
-                f"Best metric {best_metric} does not match the metric {perplexity} of the loaded best model."
-        )
-
-    if args.output_dir is not None:
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
-
-        # New Code #
-        # Saves the whole/unpartitioned fp16 model when in ZeRO Stage-3 to the output directory if
-        # `stage3_gather_16bit_weights_on_model_save` is True in DeepSpeed Config file or
-        # `zero3_save_16bit_model` is True in DeepSpeed Plugin.
-        # For Zero Stages 1 and 2, models are saved as usual in the output directory.
-        # The model name saved is `pytorch_model.bin`
-        unwrapped_model.save_pretrained(
-                args.output_dir,
-                is_main_process=accelerator.is_main_process,
-                save_function=accelerator.save,
-                state_dict=accelerator.get_state_dict(model),
-        )
-        if accelerator.is_main_process:
-            tokenizer.save_pretrained(args.output_dir)
-            # if args.push_to_hub:
-            #     api.upload_folder(
-            #         repo_id=repo_id,
-            #         folder_path=args.output_dir,
-            #         commit_message="End of training",
-            #     )
-
-        with open(os.path.join(args.output_dir, "all_results.json"), "w") as f:
-            json.dump({"perplexity": perplexity, "eval_loss": eval_loss.item()}, f)
-    accelerator.end_training()
+    logger.info("|/| May the force be with you! Training completed successfully.")
 
 
 if __name__ == "__main__":

@@ -47,5 +47,7 @@ accelerate launch   --config_file deepspeed/ds_zero3_config_4process.yaml   --ma
                     --report_to wandb \
                     --gradient_accumulation_steps 4 \
                     --save_every_n_epochs 2 \
-                    --load_best_model
+                    --load_best_model \
+                    --lora_enable
+
 

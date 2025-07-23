@@ -11,11 +11,12 @@ import threading
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-
 class GemmaCollator(VisionLanguageDataCollator):
     """
     Data collator ottimizzato per LLaVA models con cache e parallelizzazione
     """
+    _path_cache = {}
+    _cache_lock = threading.Lock()
 
     def __init__(
             self,
@@ -26,6 +27,7 @@ class GemmaCollator(VisionLanguageDataCollator):
             use_fast_validation: bool = True,
             **kwargs: Any
     ):
+
         self.system = False
         self.max_l = 0
         self.max_length = max_length
