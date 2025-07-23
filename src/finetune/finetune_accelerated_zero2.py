@@ -426,7 +426,7 @@ def setup_model_and_config(model_args, training_args, data_args):
     assert model_args.model_name_or_path, "You need to specify a model name or path"
 
     # Load configuration
-    config = AutoConfig.from_pretrained(model_args.model_name_or_path)
+    # config = AutoConfig.from_pretrained(model_args.model_name_or_path)
 
     # Attention implementation check
     if training_args.attn_implementation == "sdpa" and torch.__version__ < "2.1.2":
@@ -436,43 +436,45 @@ def setup_model_and_config(model_args, training_args, data_args):
     customized_kwargs = dict()
     cfg_pretrained = None
     overwrite_config = {}
-
+    cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
     # Handle rope scaling and other configurations
-    if any([
-            model_args.rope_scaling_factor is not None,
-            model_args.rope_scaling_type is not None,
-            model_args.mm_spatial_pool_stride is not None,
-            model_args.mm_spatial_pool_out_channels is not None,
-            model_args.mm_spatial_pool_mode is not None,
-            model_args.mm_resampler_type is not None,
-    ]):
-        cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
-
-    if model_args.use_pos_skipping is not None and model_args.pos_skipping_range is not None:
-        overwrite_config["use_pos_skipping"] = model_args.use_pos_skipping
-        overwrite_config["pos_skipping_range"] = model_args.pos_skipping_range
-
-    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
-        overwrite_config["rope_scaling"] = {
-                "factor": model_args.rope_scaling_factor,
-                "type"  : model_args.rope_scaling_type,
-        }
-        if training_args.model_max_length is None:
-            training_args.model_max_length = cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor
-            overwrite_config["max_sequence_length"] = training_args.model_max_length
-
-    if all([
-            model_args.mm_spatial_pool_stride is not None,
-            model_args.mm_spatial_pool_out_channels is not None,
-            model_args.mm_spatial_pool_mode is not None,
-            model_args.mm_resampler_type is not None
-    ]):
-        overwrite_config.update({
-                "mm_resampler_type"           : model_args.mm_resampler_type,
-                "mm_spatial_pool_stride"      : model_args.mm_spatial_pool_stride,
-                "mm_spatial_pool_out_channels": model_args.mm_spatial_pool_out_channels,
-                "mm_spatial_pool_mode"        : model_args.mm_spatial_pool_mode,
-        })
+    # if any([
+    #         model_args.rope_scaling_factor is not None,
+    #         model_args.rope_scaling_type is not None,
+    #         model_args.mm_spatial_pool_stride is not None,
+    #         model_args.mm_spatial_pool_out_channels is not None,
+    #         model_args.mm_spatial_pool_mode is not None,
+    #         model_args.mm_resampler_type is not None,
+    # ]):
+    #     cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+    # else:
+    #     cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
+    # if model_args.use_pos_skipping is not None and model_args.pos_skipping_range is not None:
+    #     overwrite_config["use_pos_skipping"] = model_args.use_pos_skipping
+    #     overwrite_config["pos_skipping_range"] = model_args.pos_skipping_range
+    #
+    # if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+    #     overwrite_config["rope_scaling"] = {
+    #             "factor": model_args.rope_scaling_factor,
+    #             "type"  : model_args.rope_scaling_type,
+    #     }
+    #     if training_args.model_max_length is None:
+    #         training_args.model_max_length = cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor
+    #         overwrite_config["max_sequence_length"] = training_args.model_max_length
+    #
+    # if all([
+    #         model_args.mm_spatial_pool_stride is not None,
+    #         model_args.mm_spatial_pool_out_channels is not None,
+    #         model_args.mm_spatial_pool_mode is not None,
+    #         model_args.mm_resampler_type is not None
+    # ]):
+    #
+    #     overwrite_config.update({
+    #             "mm_resampler_type"           : model_args.mm_resampler_type,
+    #             "mm_spatial_pool_stride"      : model_args.mm_spatial_pool_stride,
+    #             "mm_spatial_pool_out_channels": model_args.mm_spatial_pool_out_channels,
+    #             "mm_spatial_pool_mode"        : model_args.mm_spatial_pool_mode,
+    #     })
 
     if overwrite_config:
         rank0_print(f"Overwriting config with {overwrite_config}")
@@ -490,6 +492,7 @@ def setup_model_and_config(model_args, training_args, data_args):
 
     # if model_args.freeze_backbone:
     #     model.model.requires_grad_(False)
+
 
 
     # Configure PEFT/LoRA

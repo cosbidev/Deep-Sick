@@ -8,26 +8,9 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug_multi_node.sh" beforeDir="false" afterPath="$PROJECT_DIR$/debug_multi_node.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero2_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_zero2_config.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero3_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_zero3_config.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero3_config_4process.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_zero3_config_MultiNodes.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/benchmark/benchmark_LLM.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset/chexinstruct/format_chexinstruct.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/Gemma3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/Gemma3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/models/peft.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/peft.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/util_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/util_models.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -580,7 +563,7 @@
       <workItem from="1752915655010" duration="322000" />
       <workItem from="1752916678990" duration="606000" />
       <workItem from="1753176341061" duration="16830000" />
-      <workItem from="1753257759223" duration="24652000" />
+      <workItem from="1753257759223" duration="25430000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />
@@ -806,7 +789,15 @@
       <option name="project" value="LOCAL" />
       <updated>1752831950338</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration">
+      <option name="closed" value="true" />
+      <created>1753287320903</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1753287320903</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -843,7 +834,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Preprocessing, download and other stuff" />
     <MESSAGE value="Report Radiology mimic preprocessing" />
     <MESSAGE value="Preprocessing Code for mimic" />
     <MESSAGE value="Some advancements on the MIMIC dataset, ..." />
@@ -868,7 +858,8 @@
     <MESSAGE value="[Fine-tune-accelerated 1.4 ] Correcting acceleratio issue, PEFT organized, instabiloty issues on GPUs. A new sampler has been written, Deepspeed config file uploaded, also with the possibility to profile FLOPS" />
     <MESSAGE value="[Fine-tune-accelerated 1.5 ] Correcting acceleratio issue. &#10;BEST s/iter 2.05-2.20 for batch size = 4 and A100-80gb." />
     <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE accelerate config, format_chexinstruct.py correction for any image not readeble (corrupted)." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE accelerate config, format_chexinstruct.py correction for any image not readeble (corrupted)." />
+    <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration" />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -970,11 +961,6 @@
           <url>file://$PROJECT_DIR$/src/finetune/finetune.py</url>
           <line>1</line>
           <option name="timeStamp" value="319" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/models/peft.py</url>
-          <line>139</line>
-          <option name="timeStamp" value="328" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/models/VisionLanguage.py</url>
