@@ -4,13 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -797,7 +795,15 @@
       <option name="project" value="LOCAL" />
       <updated>1753287320903</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]">
+      <option name="closed" value="true" />
+      <created>1753291217052</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1753291217052</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -844,7 +850,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Report Radiology mimic preprocessing" />
     <MESSAGE value="Preprocessing Code for mimic" />
     <MESSAGE value="Some advancements on the MIMIC dataset, ..." />
     <MESSAGE value="[PREPROCESSING] New dataset code (COVID-CXR3, CXR14, CHEXPERT, CXR14)" />
@@ -869,7 +874,8 @@
     <MESSAGE value="[Fine-tune-accelerated 1.5 ] Correcting acceleratio issue. &#10;BEST s/iter 2.05-2.20 for batch size = 4 and A100-80gb." />
     <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE accelerate config, format_chexinstruct.py correction for any image not readeble (corrupted)." />
     <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration" />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration" />
+    <MESSAGE value="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
