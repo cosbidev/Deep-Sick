@@ -26,14 +26,14 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Optional
-from transformers.trainer import is_sagemaker_mp_enabled, get_parameter_names, has_length, ALL_LAYERNORM_LAYERS, logger, is_accelerate_available, is_datasets_available, GradientAccumulationPlugin
+from transformers.trainer import logger, is_accelerate_available
 
-
-from torch.profiler import profile, record_function, ProfilerActivity
 warnings.filterwarnings("ignore")
 # import hydra TODO # to use hydra for configuration management
+
 # from omegaconf import DictConfig # TODO # to use hydra for configuration management
 import wandb
+
 wandb.login(key="8be012e7c0ff0d4431216d5b3f309041178cacd4")
 
 from transformers.trainer_utils import seed_worker
@@ -69,7 +69,6 @@ from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
 from util_finetune import evaluate, BlueprintGroupedSampler, rank0_print
 
-
 os.environ["HF_TOKEN"] = "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"
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
 os.environ["HF_DATASETS_CACHE"] = cache_dir
@@ -81,143 +80,152 @@ CACHE_DIR = os.path.join(os.getcwd(), "hf_models_cache")
 logger = get_logger(__name__)
 hf_token = os.environ.get("HF_TOKEN", "")
 
-
 if is_accelerate_available():
     from accelerate import Accelerator, skip_first_batches, InitProcessGroupKwargs
 
-#
-# def parse_args():
-#
-#     parser = argparse.ArgumentParser(description="Finetune a transformers model on a causal language modeling task")
-#     parser.add_argument(
-#             "--dataset_name",
-#             type=str,
-#             default=None,
-#             help="The name of the dataset to use (via the datasets library).",
-#     )
-#     parser.add_argument(
-#             "--dataset_dir", type=str, default=None, help="Path to a directory containing the dataset files in .parquet format."
-#     )
-#     parser.add_argument(
-#             "--model_name_or_path",
-#             type=str,
-#             help="Path to pretrained model or model identifier from huggingface.co/models.",
-#             required=True,
-#             default='google/gemma-3-4b-it',
-#     )
-#     parser.add_argument("--debug", action="store_true", help="Whether to run in debug mode with fewer epochs and smaller batch size.")
-#     parser.add_argument(
-#             "--per_device_train_batch_size",
-#             type=int,
-#             default=8,
-#             help="Batch size (per device) for the training dataloader.",
-#     )
-#     parser.add_argument(
-#             "--per_device_eval_batch_size",
-#             type=int,
-#             default=8,
-#             help="Batch size (per device) for the evaluation dataloader.",
-#     )
-#     parser.add_argument(
-#             "--learning_rate",
-#             type=float,
-#             default=2e-5,
-#             help="Initial learning rate (after the potential warmup period) to use.",
-#     )
-#     parser.add_argument(
-#             "--weight_decay",
-#             type=float,
-#             default=0.001,
-#             help="Weight decay to use.")
-#
-#     parser.add_argument(
-#             "--num_train_epochs",
-#             type=int,
-#             default=3,
-#             help="Total number of training epochs to perform.")
-#     parser.add_argument(
-#             "--max_train_steps",
-#             type=int,
-#             default=None,
-#             help="Total number of training steps to perform. If provided, overrides num_train_epochs.",
-#     )
-#     parser.add_argument(
-#             "--gradient_accumulation_steps",
-#             type=int,
-#             default=1,
-#             help="Number of updates steps to accumulate before performing a backward/update pass.",
-#     )
-#     parser.add_argument(
-#             "--lr_scheduler_type",
-#             type=SchedulerType,
-#             default="linear",
-#             help="The scheduler type to use.",
-#             choices=["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"],
-#     )
-#     parser.add_argument(
-#             "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
-#     )
-#     parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
-#     parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
-#     parser.add_argument(
-#             "--model_type",
-#             type=str,
-#             default=None,
-#             help="Model type to use if training from scratch.",
-#             choices=MODEL_TYPES,
-#     )
-#     parser.add_argument(
-#             "--preprocessing_num_workers",
-#             type=int,
-#             default=None,
-#             help="The number of processes to use for the preprocessing.",
-#     )
-#
-#     parser.add_argument(
-#             "--checkpointing_steps",
-#             type=str,
-#             default=None,
-#             help="Whether the various states should be saved at the end of every n steps, or 'epoch' for each epoch.",
-#     )
-#     parser.add_argument(
-#             "--save_every_n_epochs",
-#             type=int,
-#             default=None,
-#             help="Save a model checkpoint every n epochs (in addition to other checkpointing logic)."
-#     )
-#     parser.add_argument(
-#             "--resume_from_checkpoint",
-#             type=str,
-#             default=None,
-#             help="If the training should continue from a checkpoint folder.",
-#     )
-#     # New Code #
-#     # Whether to load the best model at the end of training
-#     parser.add_argument(
-#             "--load_best_model",
-#             action="store_true",
-#             help="Whether to load the best model at the end of training",
-#     )
-#     parser.add_argument(
-#             "--with_tracking",
-#             action="store_true",
-#             help="Whether to enable experiment trackers for logging.",
-#     )
-#     parser.add_argument("--peft_strategy",
-#                         type=str, default="lora_gaussian",)
-#     parser.add_argument("--rank", type=int, default=32, help="Rank for LoRA layers.")
-#     parser.add_argument("--lora_alpha", type=int, default=32, help="Alpha for LoRA layers.")
-#     parser.add_argument("--lora_dropout", type=float, default=0.05, help="Dropout for LoRA layers.")
-#     parser.add_argument('--freeze_multimodal', default=True, action='store_true')
-#     parser.add_argument('--finetune_vision_layers', default=False, action='store_true')
-#     parser.add_argument('--finetune_language_layers', default=True, action='store_true')
-#     parser.add_argument('--finetune_attention_modules', default=True, action='store_true')
-#     parser.add_argument('--finetune_mlp_modules', default=True, action='store_true')
 
-#     args = parser.parse_args()
-#
-#     return args
-#
+def parse_args():
+
+    parser = argparse.ArgumentParser(description="Finetune a transformers model on a causal language modeling task")
+    # parser.add_argument(
+    #         "--dataset_name",
+    #         type=str,
+    #         default=None,
+    #         help="The name of the dataset to use (via the datasets library).",
+    # )
+    # parser.add_argument(
+    #         "--dataset_dir", type=str, default=None, help="Path to a directory containing the dataset files in .parquet format."
+    # )
+    # parser.add_argument(
+    #         "--model_name_or_path",
+    #         type=str,
+    #         help="Path to pretrained model or model identifier from huggingface.co/models.",
+    #         required=True,
+    #         default='google/gemma-3-4b-it',
+    # )
+
+    parser.add_argument("--debug", action="store_true", help="Whether to run in debug mode with fewer epochs and smaller batch size.")
+    parser.add_argument(
+            "--per_device_train_batch_size",
+            type=int,
+            default=8,
+            help="Batch size (per device) for the training dataloader.",
+    )
+    parser.add_argument(
+            "--per_device_eval_batch_size",
+            type=int,
+            default=8,
+            help="Batch size (per device) for the evaluation dataloader.",
+    )
+    parser.add_argument(
+            "--learning_rate",
+            type=float,
+            default=2e-5,
+            help="Initial learning rate (after the potential warmup period) to use.",
+    )
+    parser.add_argument(
+            "--weight_decay",
+            type=float,
+            default=0.001,
+            help="Weight decay to use.")
+
+    parser.add_argument(
+            "--num_train_epochs",
+            type=int,
+            default=3,
+            help="Total number of training epochs to perform.")
+    parser.add_argument(
+            "--max_train_steps",
+            type=int,
+            default=None,
+            help="Total number of training steps to perform. If provided, overrides num_train_epochs.",
+    )
+    parser.add_argument(
+            "--gradient_accumulation_steps",
+            type=int,
+            default=1,
+            help="Number of updates steps to accumulate before performing a backward/update pass.",
+    )
+    parser.add_argument(
+            "--lr_scheduler_type",
+            type=SchedulerType,
+            default="linear",
+            help="The scheduler type to use.",
+            choices=["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"],
+    )
+    parser.add_argument(
+            "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
+    )
+    parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
+    parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
+    parser.add_argument(
+            "--model_type",
+            type=str,
+            default=None,
+            help="Model type to use if training from scratch.",
+            choices=MODEL_TYPES,
+    )
+    parser.add_argument(
+            "--preprocessing_num_workers",
+            type=int,
+            default=None,
+            help="The number of processes to use for the preprocessing.",
+    )
+
+    parser.add_argument(
+            "--checkpointing_steps",
+            type=str,
+            default=None,
+            help="Whether the various states should be saved at the end of every n steps, or 'epoch' for each epoch.",
+    )
+    parser.add_argument(
+            "--save_every_n_epochs",
+            type=int,
+            default=None,
+            help="Save a model checkpoint every n epochs (in addition to other checkpointing logic)."
+    )
+    parser.add_argument(
+            "--resume_from_checkpoint",
+            type=str,
+            default=None,
+            help="If the training should continue from a checkpoint folder.",
+    )
+    # New Code #
+    # Whether to load the best model at the end of training
+    parser.add_argument(
+            "--load_best_model",
+            action="store_true",
+            help="Whether to load the best model at the end of training",
+    )
+    parser.add_argument(
+            "--with_tracking",
+            action="store_true",
+            help="Whether to enable experiment trackers for logging.",
+    )
+    parser.add_argument("--peft_strategy",
+                        type=str, default="lora_gaussian", )
+    parser.add_argument("--rank", type=int, default=32, help="Rank for LoRA layers.")
+    parser.add_argument("--lora_alpha", type=int, default=32, help="Alpha for LoRA layers.")
+    parser.add_argument("--lora_dropout", type=float, default=0.05, help="Dropout for LoRA layers.")
+    parser.add_argument('--freeze_multimodal', default=True, action='store_true')
+    parser.add_argument('--finetune_vision_layers', default=False, action='store_true')
+    parser.add_argument('--finetune_language_layers', default=True, action='store_true')
+    parser.add_argument('--finetune_attention_modules', default=True, action='store_true')
+    parser.add_argument('--finetune_mlp_modules', default=True, action='store_true')
+
+    parser.add_argument(
+            "--report_to",
+            type=str,
+            default="all",
+            help=(
+                    'The integration to report the results and logs to. Supported platforms are `"tensorboard"`,'
+                    ' `"wandb"`, `"comet_ml"`, `"dvclive"`, and `"swanlab"`. Use `"all"` (default) to report to all integrations.'
+                    "Only applicable when `--with_tracking` is passed."
+            ),
+    )
+    args = parser.parse_args()
+
+    return args
 
 
 @dataclass
@@ -227,57 +235,57 @@ class ModelArguments:
     model_class_name: Optional[str] = field(default=None, metadata={"help": "Used to init model class, format is XXXXForCausalLM. e.g. currently XXXX is chosen from LlavaLlama, LlavaMixtral, LlavaMistral, Llama"})
 
     mm_tunable_parts: Optional[str] = field(
-        default=None, metadata={"help": 'Could be "mm_mlp_adapter", "mm_vision_resampler", "mm_vision_tower,mm_mlp_adapter,mm_language_model", "mm_vision_tower,mm_mlp_adapter,mm_language_model", "mm_mlp_adapter,mm_language_model"'}
+            default=None, metadata={"help": 'Could be "mm_mlp_adapter", "mm_vision_resampler", "mm_vision_tower,mm_mlp_adapter,mm_language_model", "mm_vision_tower,mm_mlp_adapter,mm_language_model", "mm_mlp_adapter,mm_language_model"'}
     )
     # deciding which part of the multimodal model to tune, will overwrite other previous settings
 
-    version: Optional[str] = field(default="v0")
+    # version: Optional[str] = field(default="v0")
     freeze_backbone: bool = field(default=False)
-    tune_mm_mlp_adapter: bool = field(default=False)
-    tune_mm_vision_resampler: bool = field(default=False)
-    vision_tower: Optional[str] = field(default=None)
-    vision_tower_pretrained: Optional[str] = field(default=None)  # default to the last layer
+    # tune_mm_mlp_adapter: bool = field(default=False)
+    # tune_mm_vision_resampler: bool = field(default=False)
+    # vision_tower: Optional[str] = field(default=None)
+    # vision_tower_pretrained: Optional[str] = field(default=None)  # default to the last layer
 
-    unfreeze_mm_vision_tower: bool = field(default=False)
-    unfreeze_language_model: bool = field(default=False)
-    mm_vision_select_layer: Optional[int] = field(default=-1)  # default to the last layer
-    pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
+    # unfreeze_mm_vision_tower: bool = field(default=False)
+    # unfreeze_language_model: bool = field(default=False)
+    # mm_vision_select_layer: Optional[int] = field(default=-1)  # default to the last layer
+    # pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
+
     mm_projector_type: Optional[str] = field(default="linear")
     mm_use_im_start_end: bool = field(default=False)
     mm_use_im_patch_token: bool = field(default=True)
     mm_patch_merge_type: Optional[str] = field(default="flat")
-    mm_vision_select_feature: Optional[str] = field(default="patch")
+    # mm_vision_select_feature: Optional[str] = field(default="patch")
     mm_resampler_type: Optional[str] = field(default=None)
-    mm_mask_drop_mode: str = field(default="fixed")
-    mm_mask_drop_skip_percentage: float = field(default=0.0)
-    mm_mask_drop_ratio: float = field(default=0.25)
-    mm_mask_drop_ratio_upper: Optional[float] = field(default=None)
-    mm_mask_drop_ratio_lower: Optional[float] = field(default=None)
+    # mm_mask_drop_mode: str = field(default="fixed")
+    # mm_mask_drop_skip_percentage: float = field(default=0.0)
+    # mm_mask_drop_ratio: float = field(default=0.25)
+    # mm_mask_drop_ratio_upper: Optional[float] = field(default=None)
+    # mm_mask_drop_ratio_lower: Optional[float] = field(default=None)
     mm_spatial_pool_stride: Optional[int] = field(default=None)
     mm_spatial_pool_mode: str = field(default="bilinear")
     mm_spatial_pool_out_channels: Optional[int] = field(default=None)
-    mm_perceiver_depth: Optional[int] = field(default=3)
-    mm_perceiver_latents: Optional[int] = field(default=32)
-    mm_perceiver_ff_mult: Optional[float] = field(default=4)
-    mm_perceiver_pretrained: Optional[str] = field(default=None)
-    mm_qformer_depth: Optional[int] = field(default=3)
-    mm_qformer_latents: Optional[int] = field(default=32)
-    mm_qformer_pretrained: Optional[str] = field(default=None)
+    # mm_perceiver_depth: Optional[int] = field(default=3)
+    # mm_perceiver_latents: Optional[int] = field(default=32)
+    # mm_perceiver_ff_mult: Optional[float] = field(default=4)
+    # mm_perceiver_pretrained: Optional[str] = field(default=None)
+    # mm_qformer_depth: Optional[int] = field(default=3)
+    # mm_qformer_latents: Optional[int] = field(default=32)
+    # mm_qformer_pretrained: Optional[str] = field(default=None)
 
     rope_scaling_factor: Optional[float] = field(default=None)
     rope_scaling_type: Optional[str] = field(default=None)
 
-    s2: Optional[bool] = field(default=False)
-    s2_scales: Optional[str] = field(default="336,672,1008")
+    # s2: Optional[bool] = field(default=False)
+    # s2_scales: Optional[str] = field(default="336,672,1008")
 
     use_pos_skipping: Optional[bool] = field(default=False)
-    pos_skipping_range: Optional[int] = field(default=4096)
+    pos_skipping_range: Optional[int] = field(default=2048)
+
     mm_newline_position: Optional[str] = field(default="grid")
     delay_load: Optional[bool] = field(default=True)
     add_faster_video: Optional[bool] = field(default=False)
     faster_token_stride: Optional[int] = field(default=10)
-
-    lr_rate: Optional[float] = field(default=5e-5, metadata={"help": "Learning rate for the model."})
 
 
 @dataclass
@@ -285,7 +293,6 @@ class DataArguments:
 
     dataset_name: Optional[str] = field(default=None, metadata={"help": "The name of the dataset to use (via the datasets library - or - local funcion for parquet chexinstruct)."})
     dataset_dir: Optional[str] = field(default=None, metadata={"help": "Path to a directory containing the dataset files in .parquet format."})
-    cache_dir: Optional[str] = field(default=os.path, metadata={"help": "Path to a directory where the dataset will be cached."})
     data_path: str = field(default=None, metadata={"help": "Path to the training data, in llava's instruction.json format. Supporting multiple json files via /path/to/{a,b,c}.json"})
     lazy_preprocess: bool = False
     is_multimodal: bool = False
@@ -296,33 +303,34 @@ class DataArguments:
     image_crop_resolution: Optional[int] = field(default=None)
     image_split_resolution: Optional[int] = field(default=None)
 
-    
+
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=CACHE_DIR, metadata={"help": "Path to a directory where the model will be cached."})
-    
+
     optim: str = field(default="adamw_torch")
     remove_unused_columns: bool = field(default=False)
-    #freeze_mm_mlp_adapter: bool = field(default=False)
-    #freeze_mm_vision_resampler: bool = field(default=False)
-    mm_projector_lr: Optional[float] = field(default=None, metadata={"help": "Learning rate for the multimodal projector."})
-    mm_vision_tower_lr: Optional[float] = field(default=None, metadata={"help": "Learning rate for the vision tower."})
+    # freeze_mm_mlp_adapter: bool = field(default=False)
+    # freeze_mm_vision_resampler: bool = field(default=False)
+    # mm_projector_lr: Optional[float] = field(default=None, metadata={"help": "Learning rate for the multimodal projector."})
+    # mm_vision_tower_lr: Optional[float] = field(default=None, metadata={"help": "Learning rate for the vision tower."})
+
     gradient_checkpointing: bool = field(default=True, metadata={"help": "Whether to use gradient checkpointing."})
     verbose_logging: bool = field(default=False, metadata={"help": "Whether to enable verbose logging."})
     attn_implementation: str = field(default="flash_attention_2", metadata={"help": "Use transformers attention implementation."})
+    save_every_n_epochs: Optional[int] = field(default=None, metadata={"help": "Save a model checkpoint every n epochs (in addition to other checkpointing logic)."})
+    with_tracking: bool = field(default=True, metadata={"help": "Whether to enable experiment trackers for logging."})
+    preprocessing_num_workers: Optional[int] = field(default=None, metadata={"help": "The number of processes to use for the preprocessing."})
 
-    
+    # mpt_attn_impl: Optional[str] = field(default="triton")
 
-    mpt_attn_impl: Optional[str] = field(default="triton")
-    
     model_max_length: int = field(
-        default=2048,
-        metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
+            default=2048,
+            metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
     )
-    
-    #double_quant: bool = field(default=True, metadata={"help": "Compress the quantization statistics through double quantization."})
-    #quant_type: str = field(default="nf4", metadata={"help": "Quantization data type to use. Should be one of `fp4` or `nf4`."})
-    #bits: int = field(default=16, metadata={"help": "How many bits to use."})
+    # double_quant: bool = field(default=True, metadata={"help": "Compress the quantization statistics through double quantization."})
+    # quant_type: str = field(default="nf4", metadata={"help": "Quantization data type to use. Should be one of `fp4` or `nf4`."})
+    # bits: int = field(default=16, metadata={"help": "How many bits to use."})
     lora_enable: bool = field(default=True, metadata={"help": "Whether to enable LoRA training."})
     lora_r: int = field(default=64, metadata={"help": "Rank for LoRA layers."})
     lora_alpha: int = field(default=16, metadata={"help": "LoRA alpha."})
@@ -334,15 +342,16 @@ class TrainingArguments(transformers.TrainingArguments):
     finetune_vision_layers: bool = field(default=False, metadata={"help": "Whether to finetune the vision layers."})
     finetune_language_layers: bool = field(default=True, metadata={"help": "Whether to finetune the language layers."})
     finetune_attention_modules: bool = field(default=True, metadata={"help": "Whether to finetune the attention modules."})
-    finetune_mlp_modules: bool = field(default=True, metadata={"help": "Whether to finetune the MLP modules."}) 
+    finetune_mlp_modules: bool = field(default=True, metadata={"help": "Whether to finetune the MLP modules."})
+
     debug: bool = field(default=False, metadata={"help": "Whether to run in debug mode with fewer epochs and smaller batch size."})
-    split_batches: bool = field(default=True, metadata={"help": "Whether to split batches across multiple devices."})
+
+
 # @hydra.main(version_base="v1.3", config_path="../../configs/PEFT_runs", config_name="config") # TODO # to use hydra for configuration management
 def main():
 
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-
 
     if training_args.verbose_logging:
         rank0_print(f"Inspecting experiment hyperparameters:\n")
@@ -350,33 +359,32 @@ def main():
         rank0_print(f"data_args = {vars(data_args)}\n\n")
         rank0_print(f"training_args = {vars(training_args)}\n\n")
         # rank0_print(f"evaluation_args = {vars(evaluation_args)}\n\n")
-    #args = parse_args()
+    args = parse_args()
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
     # in the environment
     # ----------------------------------- Accelerator Initialization -----------------------------------
 
-    grad_acc_args = {"num_steps": args.gradient_accumulation_steps}
-    grad_acc_args["sync_with_dataloader"] = False
-    gradient_accumulation_plugin = GradientAccumulationPlugin(**grad_acc_args)
+    grad_acc_kwargs = {"gradient_accumulation_step": args.gradient_accumulation_steps}
+    grad_acc_kwargs["sync_with_dataloader"] = False
+    # gradient_accumulation_plugin = GradientAccumulationPlugin(**grad_acc_kwargs)
     accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
     rank0_print("Setting NCCL timeout to INF to avoid running errors.")
 
     # create accelerator object
     accelerator = Accelerator(
-        log_with=args.report_to,
-        deepspeed_plugin=args.deepspeed_plugin,
-        project_dir=args.output_dir,
-        gradient_accumulation_plugin=gradient_accumulation_plugin,
-        kwargs_handlers=[accelerator_kwargs]
+            log_with=args.report_to,
+            deepspeed_plugin=args.deepspeed_plugin,
+            project_dir=args.output_dir,
+            gradient_accumulation_steps=args.gradient_accumulation_steps,
+            kwargs_handlers=[accelerator_kwargs]
     )
 
     accelerator.init_trackers(
             project_name=f'{args.model_name_or_path.split("/")}-finetuning-{args.peft_strategy}',
             config=vars(args)  # or your config dict
     )
-
 
     # ----------------------------------- Dataset Loading -----------------------------------
     if args.dataset_dir is not None:
@@ -388,17 +396,17 @@ def main():
         raw_datasets = load_parquet_image_dataset(
                 dataset_dir=args.dataset_dir,
                 split_list=["train", "val"],
-                cache_dir=cache_dir,# Specify the split you want to use ['test', 'val', 'train']
-                keep_in_memory = True,
+                cache_dir=cache_dir,  # Specify the split you want to use ['test', 'val', 'train']
+                keep_in_memory=True,
                 num_proc=args.preprocessing_num_workers,
         )
-        
+
         if args.debug:
             # Reduce the dataset size for debugging purposes
             for split in raw_datasets.keys():
                 raw_datasets[split] = raw_datasets[split].select(range(500))
 
-    if data_args.dataset_name is None and data_args.dataset_dir is None:
+    if args.dataset_name is None and args.dataset_dir is None:
         raise ValueError(
                 "You need to specify either a dataset name or a dataset directory. "
                 "Use --dataset_name for a HF dataset or --dataset_dir to specify the dataset folder in local (parquet)."
@@ -422,7 +430,6 @@ def main():
         datasets.utils.logging.set_verbosity_error()
         transformers.utils.logging.set_verbosity_error()
 
-
     # If passed along, set the training seed now.
     if args.seed is not None:
         set_seed(args.seed)
@@ -431,8 +438,6 @@ def main():
     #
     # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
-
-    
 
     # Get the text column names for the training and evaluation datasets
     collator = get_collator(model_id=args.model_name_or_path,
@@ -448,7 +453,7 @@ def main():
 
     assert args.model_name_or_path, "You need to specify a model name or path with --model_name_or_path"
     config = AutoConfig.from_pretrained(args.model_name_or_path)
-    
+
     assert training_args.attn_implementation
     if training_args.attn_implementation == "sdpa" and torch.__version__ < "2.1.2":
         raise ValueError("The 'sdpa' attention implementation requires torch version 2.1.2 or higher.")
@@ -460,14 +465,14 @@ def main():
 
     overwrite_config = {}
     if any(
-        [
-            model_args.rope_scaling_factor is not None,
-            model_args.rope_scaling_type is not None,
-            model_args.mm_spatial_pool_stride is not None,
-            model_args.mm_spatial_pool_out_channels is not None,
-            model_args.mm_spatial_pool_mode is not None,
-            model_args.mm_resampler_type is not None,
-        ]
+            [
+                    model_args.rope_scaling_factor is not None,
+                    model_args.rope_scaling_type is not None,
+                    model_args.mm_spatial_pool_stride is not None,
+                    model_args.mm_spatial_pool_out_channels is not None,
+                    model_args.mm_spatial_pool_mode is not None,
+                    model_args.mm_resampler_type is not None,
+            ]
     ):
         cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
 
@@ -477,14 +482,14 @@ def main():
 
     if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
         overwrite_config["rope_scaling"] = {
-            "factor": model_args.rope_scaling_factor,
-            "type": model_args.rope_scaling_type,
+                "factor": model_args.rope_scaling_factor,
+                "type"  : model_args.rope_scaling_type,
         }
         if training_args.model_max_length is None:
             training_args.model_max_length = cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor
             overwrite_config["max_sequence_length"] = training_args.model_max_length
         assert training_args.model_max_length == int(cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor), print(
-            f"model_max_length: {training_args.model_max_length}, max_position_embeddings: {cfg_pretrained.max_position_embeddings}, rope_scaling_factor: {model_args.rope_scaling_factor}"
+                f"model_max_length: {training_args.model_max_length}, max_position_embeddings: {cfg_pretrained.max_position_embeddings}, rope_scaling_factor: {model_args.rope_scaling_factor}"
         )
         # overwrite_config["max_sequence_length"] = model_args.max_sequence_length
         # overwrite_config["tokenizer_model_max_length"] = model_args.tokenizer_model_max_length
@@ -507,21 +512,20 @@ def main():
 
         customized_kwargs["config"] = cfg_pretrained
 
-
-
-
     model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_path,
             from_tf=bool(".ckpt" in args.model_name_or_path),
             config=config,
             cache_dir=CACHE_DIR
     )
+    if model_args.freeze_backbone:
+        model.model.requires_grad_(False)
     # TODO create the config for the peft in the args
-    if training_args.enable_lora:
+    if training_args.lora_enable:
         model = configure_model_for_training(
                 model,
                 strategy=args.peft_strategy,
-                r=args.rank,
+                r=args.lora_r,
                 lora_alpha=args.lora_alpha,
                 lora_dropout=args.lora_dropout,
                 bias=args.lora_bias,
@@ -531,8 +535,6 @@ def main():
                 finetune_attention_modules=args.finetune_attention_modules,
                 finetune_mlp_modules=args.finetune_mlp_modules,
         )
-
-
 
     # Log a few random samples from the training set:
     for index in random.sample(range(len(train_dataset)), 3):
@@ -545,21 +547,19 @@ def main():
                 lengths=train_dataset["length"],
                 n_images=train_dataset["n_of_images"],
         )
-
         sampler_val = BlueprintGroupedSampler(
                 batch_size=args.per_device_eval_batch_size,
                 world_size=accelerator.num_processes,
                 lengths=eval_dataset["length"],
                 n_images=eval_dataset["n_of_images"],
         )
-
         # Crea una versione parziale della funzione con i parametri fissi
         fixed_seed_worker = partial(seed_worker, num_workers=4, rank=accelerator.process_index)
         # New Code #
         # DataLoaders creation:
         train_dataloader = DataLoader(
                 train_dataset,
-                sampler= sampler_train,
+                sampler=sampler_train,
                 collate_fn=collator,
                 drop_last=True,
                 worker_init_fn=fixed_seed_worker,
@@ -580,7 +580,6 @@ def main():
         raise
 
     tester = next(iter(eval_dataloader))
-
 
     # Optimizer
     # Split weights in two groups, one with weight decay and the other not.
@@ -635,8 +634,6 @@ def main():
         model.config.hidden_size = model.model.language_model.embed_tokens.embedding_dim
     except:
         model.config.hidden_size = 2560
-
-
 
     # Prepare everything with our `accelerator`.
     model, optimizer, train_dataloader, eval_dataloader, lr_scheduler = accelerator.prepare(
@@ -713,7 +710,7 @@ def main():
             active_dataloader = train_dataloader
 
         for step, batch in enumerate(active_dataloader):
-            # RIMUOVI: with accelerator.accumulate(model):
+            # RIMUOVI:
 
             outputs = model(**batch)
             loss = outputs.loss
@@ -721,8 +718,7 @@ def main():
             # Scala la loss per gradient accumulation
             loss = loss / accelerator.gradient_accumulation_steps
             accelerator.backward(loss)
-
-            # Aggiorna solo quando l'accumulation è completa
+            # Log the learning rate
             if (step + 1) % accelerator.gradient_accumulation_steps == 0:
                 optimizer.step()
                 lr_scheduler.step()
@@ -737,6 +733,7 @@ def main():
                 }, step=step)
             # We keep track of the loss at each epoch
             if args.with_tracking:
+
                 step_loss = accelerator.reduce(loss.detach().clone()).item()
                 total_loss += step_loss * accelerator.gradient_accumulation_steps
 
@@ -751,7 +748,6 @@ def main():
                 break
 
         perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator)
-
 
         if args.with_tracking:
             accelerator.log(
@@ -784,7 +780,6 @@ def main():
             accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
             accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
 
-
     # New Code #
     # Loads the best checkpoint after the training is finished
     if args.load_best_model:
@@ -801,6 +796,7 @@ def main():
 
     if args.output_dir is not None:
         accelerator.wait_for_everyone()
+
         unwrapped_model = accelerator.unwrap_model(model)
         unwrapped_model.save_pretrained(
                 args.output_dir,
@@ -811,8 +807,8 @@ def main():
         if accelerator.is_main_process:
             tokenizer.save_pretrained(args.output_dir)
             # if args.push_to_hub: TODO # Uncomment to push the model to the HuggingFace Hub
-            #     api.upload_folder(
-            #         repo_id=repo_id,
+            #     api.upload_frepo_idolder(
+            #         repo_id=,
             #         folder_path=args.output_dir,
             #         commit_message="End of training",
             #     )
@@ -822,6 +818,7 @@ def main():
     accelerator.end_training()
 
     print("|/| May the force be with you! Training completed successfully.")
+
 
 if __name__ == "__main__":
     main()

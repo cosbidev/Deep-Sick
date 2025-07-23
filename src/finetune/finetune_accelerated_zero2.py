@@ -510,6 +510,11 @@ def setup_model_and_config(model_args, training_args, data_args):
                 finetune_attention_modules=training_args.finetune_attention_modules,
                 finetune_mlp_modules=training_args.finetune_mlp_modules,
         )
+        for name, param in model.named_parameters():
+            if param.requires_grad and (not hasattr(param, "grad") or param.grad is None):
+                if hasattr(param, "shape") and 0 in param.shape:
+                    print(f"[DISABLE] {name}: shape={param.shape}, grad=None")
+                    param.requires_grad = False
 
     if hasattr(model, 'gradient_checkpointing_enable'):
         model.gradient_checkpointing_disable()
