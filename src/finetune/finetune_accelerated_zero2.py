@@ -18,11 +18,11 @@ Finetuning script for GEMMA3 or other causal language models using HuggingFace T
 This script is converted from the accelerate-based version to use the standard Trainer API.
 """
 import math
-import pathlib
 import warnings
 from dataclasses import dataclass, field
-from datetime import timedelta
-from typing import Optional, Union, Any
+from functools import partial
+from typing import Optional, Union, Any, Callable
+from tqdm import tqdm
 import os
 import json
 import logging
@@ -37,26 +37,27 @@ from transformers import (
     EarlyStoppingCallback,
     HfArgumentParser,
 )
-from accelerate.utils import DummyOptim, DummyScheduler, set_seed
-from accelerate.utils import GradientAccumulationPlugin
+from accelerate import Accelerator
+from accelerate.state import DistributedType
+from accelerate.utils import DummyScheduler, GradientAccumulationPlugin
 from torch.utils.data import DataLoader
-from transformers import get_scheduler
 
+from transformers import get_scheduler
 from transformers.trainer_utils import seed_worker
-from transformers.trainer import is_sagemaker_mp_enabled, get_parameter_names, has_length, logger, is_accelerate_available
+from transformers.trainer import has_length, logger
 # Suppress warnings
 warnings.filterwarnings("ignore")
 
-# W&B setup
-#import wandb
-
-#wandb.login(key="8be012e7c0ff0d4431216d5b3f309041178cacd4")
-
-# Import your custom modules
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
-from util_finetune import rank0_print, BlueprintGroupedSampler
-from accelerate import Accelerator, skip_first_batches, InitProcessGroupKwargs
+from util_finetune import rank0_print, BlueprintGroupedSampler, evaluate
+
+# W&B setup
+# import wandb
+# wandb.login(key="8be012e7c0ff0d4431216d5b3f309041178cacd4")
+
+# Import your custom modules
+
 # Environment setup
 os.environ["HF_TOKEN"] = "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"
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
@@ -197,7 +198,12 @@ class CustomTrainingArguments(TrainingArguments):
     greater_is_better: bool = field(default=False)
     # W&B integration
     report_to: str = field(default="wandb")
-
+    output_dir: str = field(default="none", metadata={"help": "Output directory for model predictions and checkpoints."})
+    with_tracking: bool = field(default=True, metadata={"help": "Whether to use tracking for the training run."})
+    gradient_accumulation_steps: int = field(default=1, metadata={"help": "Number of updates steps to accumulate before performing a backward/update pass."})
+    checkpointing_steps: Optional[str] = field(default='none', metadata={"help": "Checkpointing steps, can be 'epoch', 'steps', or a number of steps."})
+    save_every_n_epochs: Optional[int] = field(default=None, metadata={"help": "Save every n epochs."})
+    early_stopping_patience: Optional[int] = field(default=2, metadata={"help": "Number of epochs with no improvement after which training will be stopped."})
 
 
 class CustomTrainer(Trainer):
@@ -213,32 +219,13 @@ class CustomTrainer(Trainer):
         grad_acc_kwargs["sync_with_dataloader"] = False
         gradient_accumulation_plugin = GradientAccumulationPlugin(**grad_acc_kwargs)
 
-        accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
-        rank0_print("Setting NCCL timeout to INF to avoid running errors.")
 
 
         # create accelerator object
         self.accelerator = Accelerator(
-           deepspeed_plugin=self.args.deepspeed_plugin, gradient_accumulation_plugin=gradient_accumulation_plugin, kwargs_handlers=[accelerator_kwargs]
+           deepspeed_plugin=self.args.deepspeed_plugin, gradient_accumulation_plugin=gradient_accumulation_plugin
         )
         # some Trainer classes need to use `gather` instead of `gather_for_metrics`, thus we store a flag
-        self.gather_function = self.accelerator.gather_for_metrics
-
-        # deepspeed and accelerate flags covering both trainer args and accelerate launcher
-        self.is_deepspeed_enabled = getattr(self.accelerator.state, "deepspeed_plugin", None) is not None
-        self.is_fsdp_enabled = getattr(self.accelerator.state, "fsdp_plugin", None) is not None
-
-        # post accelerator creation setup
-        if self.is_fsdp_enabled:
-            fsdp_plugin = self.accelerator.state.fsdp_plugin
-            fsdp_plugin.limit_all_gathers = self.args.fsdp_config.get("limit_all_gathers", fsdp_plugin.limit_all_gathers)
-            if is_accelerate_available("0.23.0"):
-                fsdp_plugin.activation_checkpointing = self.args.fsdp_config.get("activation_checkpointing", fsdp_plugin.activation_checkpointing)
-                if fsdp_plugin.activation_checkpointing and self.args.gradient_checkpointing:
-                    raise ValueError("The activation_checkpointing in FSDP config and the gradient_checkpointing in training arg " "can't be set to True simultaneously. Please use FSDP's activation_checkpointing logic " "when using FSDP.")
-
-        if self.is_deepspeed_enabled and getattr(self.args, "hf_deepspeed_config", None) is None:
-            self.propagate_args_to_deepspeed()
 
     def is_tp_enabled(self):
         return super().is_tp_enabled
@@ -292,7 +279,6 @@ class CustomTrainer(Trainer):
     #     self.lr_scheduler = lr_scheduler
     #
     #     return self.lr_scheduler
-
 
 
 
@@ -421,6 +407,7 @@ def load_and_prepare_datasets(data_args):
     return raw_datasets["train"], raw_datasets["val"]
 
 
+
 def setup_model_and_config(model_args, training_args, data_args):
     """Setup model configuration and load the model."""
     assert model_args.model_name_or_path, "You need to specify a model name or path"
@@ -434,47 +421,9 @@ def setup_model_and_config(model_args, training_args, data_args):
 
     # Configuration overrides
     customized_kwargs = dict()
-    cfg_pretrained = None
     overwrite_config = {}
     cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
-    # Handle rope scaling and other configurations
-    # if any([
-    #         model_args.rope_scaling_factor is not None,
-    #         model_args.rope_scaling_type is not None,
-    #         model_args.mm_spatial_pool_stride is not None,
-    #         model_args.mm_spatial_pool_out_channels is not None,
-    #         model_args.mm_spatial_pool_mode is not None,
-    #         model_args.mm_resampler_type is not None,
-    # ]):
-    #     cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
-    # else:
-    #     cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
-    # if model_args.use_pos_skipping is not None and model_args.pos_skipping_range is not None:
-    #     overwrite_config["use_pos_skipping"] = model_args.use_pos_skipping
-    #     overwrite_config["pos_skipping_range"] = model_args.pos_skipping_range
-    #
-    # if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
-    #     overwrite_config["rope_scaling"] = {
-    #             "factor": model_args.rope_scaling_factor,
-    #             "type"  : model_args.rope_scaling_type,
-    #     }
-    #     if training_args.model_max_length is None:
-    #         training_args.model_max_length = cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor
-    #         overwrite_config["max_sequence_length"] = training_args.model_max_length
-    #
-    # if all([
-    #         model_args.mm_spatial_pool_stride is not None,
-    #         model_args.mm_spatial_pool_out_channels is not None,
-    #         model_args.mm_spatial_pool_mode is not None,
-    #         model_args.mm_resampler_type is not None
-    # ]):
-    #
-    #     overwrite_config.update({
-    #             "mm_resampler_type"           : model_args.mm_resampler_type,
-    #             "mm_spatial_pool_stride"      : model_args.mm_spatial_pool_stride,
-    #             "mm_spatial_pool_out_channels": model_args.mm_spatial_pool_out_channels,
-    #             "mm_spatial_pool_mode"        : model_args.mm_spatial_pool_mode,
-    #     })
+
 
     if overwrite_config:
         rank0_print(f"Overwriting config with {overwrite_config}")
@@ -489,11 +438,6 @@ def setup_model_and_config(model_args, training_args, data_args):
             cache_dir=data_args.cache_dir,
             **customized_kwargs
     )
-
-    # if model_args.freeze_backbone:
-    #     model.model.requires_grad_(False)
-
-
 
     # Configure PEFT/LoRA
     if training_args.lora_enable:
@@ -518,6 +462,7 @@ def setup_model_and_config(model_args, training_args, data_args):
 
     if hasattr(model, 'gradient_checkpointing_enable'):
         model.gradient_checkpointing_disable()
+
     # Set hidden size for compatibility
     try:
         model.config.hidden_size = model.model.language_model.embed_tokens.embedding_dim
@@ -533,11 +478,6 @@ def create_optimizers(model, training_args):
     We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
     Trainer's init through `optimizers`, or subclass and override this method in a subclass.
     """
-
-
-
-
-
 
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
@@ -556,7 +496,7 @@ def create_optimizers(model, training_args):
     # Creates Dummy Optimizer if `optimizer` was specified in the config file else creates Adam Optimize
     optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=training_args.learning_rate)
 
-    if getattr(training_args, "adam_epsilon", None) is not None:
+    if getattr(training_args, "lr_scheduler_type", None) is not None:
         lr_scheduler = get_scheduler(
                 name=training_args.lr_scheduler_type,
                 optimizer=optimizer,
@@ -568,8 +508,6 @@ def create_optimizers(model, training_args):
         lr_scheduler = DummyScheduler(
                 optimizer, total_num_steps=training_args.max_train_steps, warmup_num_steps=training_args.num_warmup_steps
         )
-
-    # TODO {if optimizer_cls.__name__ == "Adam8bit": IMPLEMENT bitsandbytes optimization for 8-bit Adam optimizer ? @secondary
     return optimizer, lr_scheduler
 
 
@@ -580,6 +518,23 @@ def main():
 
     # Setup logging
     setup_logging(training_args)
+    # ----------------------------------- Accelerator Initialization -----------------------------------
+    accelerator = (
+            Accelerator(
+                    log_with=training_args.report_to,
+                    project_dir=training_args.output_dir,
+                    gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+            )
+            if training_args.with_tracking
+            else Accelerator(
+                    gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+            )
+    )
+    # New Code #
+    accelerator.init_trackers(
+            project_name=f'{model_args.model_name_or_path.split("/")}-finetuning-{training_args.peft_strategy}',
+
+    )
 
 
     # Verbose logging
@@ -595,8 +550,6 @@ def main():
 
     # Load datasets
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
-
-
     # Setup model and tokenizer/processor
     model = setup_model_and_config(
             model_args=model_args,
@@ -610,10 +563,60 @@ def main():
             padding_side="left",
             token=hf_token
     )
+
+
+    import random
+    # Log a few random samples from the training set:
+    for index in random.sample(range(len(train_dataset)), 3):
+        logger.info(f"Sample {index} of the training set: {train_dataset[index]['texts']}.")
+    try:
+        # Obtain the world Size:
+        sampler_train = BlueprintGroupedSampler(
+                batch_size=training_args.per_device_train_batch_size,
+                world_size=accelerator.num_processes,
+                lengths=train_dataset["length"],
+                n_images=train_dataset["n_of_images"],
+        )
+
+        sampler_val = BlueprintGroupedSampler(
+                batch_size=training_args.per_device_eval_batch_size,
+                world_size=accelerator.num_processes,
+                lengths=eval_dataset["length"],
+                n_images=eval_dataset["n_of_images"],
+        )
+
+        # Crea una versione parziale della funzione con i parametri fissi
+        fixed_seed_worker = partial(seed_worker, num_workers=4, rank=accelerator.process_index)
+        # New Code #
+        # DataLoaders creation:
+        train_dataloader = DataLoader(
+                train_dataset,
+                sampler=sampler_train,
+                collate_fn=collator,
+                drop_last=True,
+                worker_init_fn=fixed_seed_worker,
+                batch_size=training_args.per_device_train_batch_size,
+                pin_memory=True,
+        )
+        eval_dataloader = DataLoader(
+                eval_dataset,
+                sampler=sampler_val,
+                collate_fn=collator,
+                drop_last=True,
+                batch_size=training_args.per_device_eval_batch_size,
+        )
+    except Exception as e:
+        logger.error(
+                "There was an issue creating the dataloaders. Please check your dataset and collator configuration."
+        )
+        raise
+
+
+    tester = next(iter(eval_dataloader))
+
+    # -- Processor and tokenizer setup --
     processor = collator.processor
-    tokenizer = processor.tokenizer
-
-
+    tokenizer = collator.tokenizer
 
     logger.info(f"Using processor: {processor} and tokenizer: {tokenizer}")
 
@@ -630,7 +633,7 @@ def main():
     # Setup callbacks
     callbacks = []
     if training_args.load_best_model_at_end:
-        callbacks.append(EarlyStoppingCallback(early_stopping_patience=2))
+        callbacks.append(EarlyStoppingCallback(early_stopping_patience=training_args.early_stopping_patience))
 
     num_update_steps_per_epoch = math.ceil(len(train_dataset) / training_args.gradient_accumulation_steps)
     if training_args.max_train_steps is None:
@@ -638,21 +641,40 @@ def main():
     else:
         training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
 
+    optimizer, lr_scheduler = create_optimizers(model, training_args)
 
-    # Initialize trainer
-    trainer = CustomTrainer(
-            optimizers=create_optimizers(model, training_args),
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
-            tokenizer=tokenizer,
-            data_collator=collator,
-            callbacks=callbacks,
-    )
+    # Only show the progress bar once on each machine.
+    progress_bar = tqdm(range(training_args.max_train_steps), disable=not accelerator.is_local_main_process)
+    best_metric = None
+    best_metric_checkpoint = None
 
+    def training_step(
+        model: torch.nn.Module,
+        batch: dict[str, Any],
+        accelerator,
+        gradient_accumulation_steps: int,
+        compute_loss_fn: Optional[Callable] = None,
+        num_items_in_batch: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        model.train()
 
-    # Training
+        with torch.set_grad_enabled(True):
+            if compute_loss_fn is not None:
+                loss = compute_loss_fn(model, batch, num_items_in_batch)
+            else:
+                outputs = model(**batch)
+                loss = outputs.loss
+
+        # Normalize loss unless DeepSpeed handles it
+        if accelerator.distributed_type != DistributedType.DEEPSPEED:
+            loss = loss / gradient_accumulation_steps
+
+        accelerator.backward(loss)
+
+        return loss.detach()
+
+    # === Training Loop ===
+
     logger.info("***** Running training *****")
     logger.info(f"  Num examples = {len(train_dataset)}")
     logger.info(f"  Num Epochs = {training_args.num_train_epochs}")
@@ -660,38 +682,185 @@ def main():
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {training_args.train_batch_size}")
     logger.info(f"  Gradient Accumulation steps = {training_args.gradient_accumulation_steps}")
 
+    # Resume
+    if training_args.resume_from_checkpoint:
+        accelerator.load_state(training_args.resume_from_checkpoint)
+        accelerator.print(f"Resumed from checkpoint: {training_args.resume_from_checkpoint}")
+        path = os.path.basename(training_args.resume_from_checkpoint)
+        training_difference = os.path.splitext(path)[0]
+
+        if "epoch" in training_difference:
+            starting_epoch = int(training_difference.replace("epoch_", "")) + 1
+            resume_step = None
+            completed_steps = starting_epoch * num_update_steps_per_epoch
+        else:
+            resume_step = int(training_difference.replace("step_", ""))
+            starting_epoch = resume_step // num_update_steps_per_epoch
+            resume_step -= starting_epoch * num_update_steps_per_epoch
+            completed_steps = resume_step
+    else:
+        starting_epoch = 0
+        resume_step = None
+        completed_steps = 0
+
+    progress_bar.update(completed_steps)
+
+    for epoch in range(starting_epoch, training_args.num_train_epochs):
+        model.train()
+        total_loss = 0 if training_args.with_tracking else None
+
+        active_dataloader = (
+                accelerator.skip_first_batches(train_dataloader, resume_step)
+                if training_args.resume_from_checkpoint and epoch == starting_epoch and resume_step is not None
+                else train_dataloader
+        )
+
+        for step, batch in enumerate(active_dataloader):
+            loss = training_step(
+                    model=model,
+                    batch=batch,
+                    accelerator=accelerator,
+                    gradient_accumulation_steps=training_args.gradient_accumulation_steps
+            )
+
+            # Gradient accumulation
+            if (step + 1) % training_args.gradient_accumulation_steps == 0:
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
+
+                progress_bar.update(1)
+                completed_steps += 1
+
+                if training_args.with_tracking:
+                    accelerator.log({
+                            "train/loss": loss.item(),
+                            "train/lr"  : lr_scheduler.get_last_lr()[0],
+                    }, step=completed_steps)
+
+            if training_args.with_tracking:
+                step_loss = accelerator.reduce(loss.clone()).item()
+                total_loss += step_loss * training_args.gradient_accumulation_steps
+
+            # Checkpointing every N steps
+            if isinstance(training_args.checkpointing_steps, int):
+                if completed_steps % training_args.checkpointing_steps == 0:
+                    output_dir = os.path.join(training_args.output_dir, f"step_{completed_steps}")
+                    accelerator.save_state(output_dir)
+
+            if completed_steps >= training_args.max_train_steps:
+                break
+
+        # Evaluation
+        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+
+        if training_args.with_tracking:
+            accelerator.log({
+                    "perplexity": perplexity,
+                    "eval_loss" : eval_loss,
+                    "train_loss": total_loss / len(train_dataloader),
+                    "epoch"     : epoch,
+                    "step"      : completed_steps,
+            }, step=completed_steps)
+
+        # Epoch-level checkpointing
+        if training_args.save_every_n_epochs is not None:
+            if (epoch + 1) % training_args.save_every_n_epochs == 0:
+                save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch}")
+                accelerator.save_state(save_path)
+                accelerator.print(f"Saved checkpoint every_n_epochs at: {save_path}")
+
+        if isinstance(training_args.checkpointing_steps, str) and training_args.checkpointing_steps == "epoch":
+            accelerator.save_state(os.path.join(training_args.output_dir, f"epoch_{epoch}"))
+
+        # Save best model
+        if best_metric is None or best_metric > perplexity:
+            best_metric = perplexity
+            best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
+            accelerator.save_state(best_metric_checkpoint)
+            accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
+            accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
+
+    # Reload best checkpoint
+    if training_args.load_best_model:
+        accelerator.load_state(best_metric_checkpoint)
+
+    # Final evaluation
+    perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+    logger.info(f"Best model metrics: perplexity: {perplexity} eval_loss: {eval_loss}")
+
+    if perplexity != best_metric:
+        raise AssertionError(
+                f"Best metric {best_metric} does not match the metric {perplexity} of the loaded best model."
+        )
+
+    # Save final model and tokenizer
+    if training_args.output_dir is not None:
+        accelerator.wait_for_everyone()
+        unwrapped_model = accelerator.unwrap_model(model)
+        unwrapped_model.save_pretrained(
+                training_args.output_dir,
+                is_main_process=accelerator.is_main_process,
+                save_function=accelerator.save,
+                state_dict=accelerator.get_state_dict(model),
+        )
+        if accelerator.is_main_process:
+            tokenizer.save_pretrained(training_args.output_dir)
+
+        with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
+            json.dump({"perplexity": perplexity, "eval_loss": eval_loss.item()}, f)
+
+    accelerator.end_training()
+
+    print("|/| May the force be with you! Training completed successfully.")
+
+    # Initialize trainer
+    # trainer = CustomTrainer(
+    #         optimizers=create_optimizers(model, training_args),
+    #         model=model,
+    #         args=training_args,
+    #         train_dataset=train_dataset,
+    #         eval_dataset=eval_dataset,
+    #         tokenizer=tokenizer,
+    #         data_collator=collator,
+    #         callbacks=callbacks,
+    # )
+    # if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")) and checkpoint:
+    #     train_result = trainer.train(resume_from_checkpoint=True)
+    # else:
+    #     trainer.train()
+    # trainer.save_state()
+    #
+    # # Save model
+    # trainer.save_model()
+    #
+    # # Save training metrics
+    # metrics = train_result.metrics
+    # trainer.log_metrics("train", metrics)
+    # trainer.save_metrics("train", metrics)
+    # trainer.save_state()
+    #
+    # # Final evaluation
+    # logger.info("***** Running final evaluation *****")
+    # eval_results = trainer.evaluate()
+    # trainer.log_metrics("eval", eval_results)
+    # trainer.save_metrics("eval", eval_results)
+    #
+    #
+    # # Save final results
+    # if training_args.local_rank in [-1, 0]:
+    #     with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
+    #         final_results = {**metrics, **eval_results}
+    #         json.dump(final_results, f, indent=2)
+
+    # Training
+
     # Check if resuming from checkpoint
     checkpoint = None
     if training_args.resume_from_checkpoint is not None:
         checkpoint = training_args.resume_from_checkpoint
 
 
-    if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")) and checkpoint:
-        train_result = trainer.train(resume_from_checkpoint=True)
-    else:
-        trainer.train()
-    trainer.save_state()
-
-    # Save model
-    trainer.save_model()
-
-    # Save training metrics
-    metrics = train_result.metrics
-    trainer.log_metrics("train", metrics)
-    trainer.save_metrics("train", metrics)
-    trainer.save_state()
-
-    # Final evaluation
-    logger.info("***** Running final evaluation *****")
-    eval_results = trainer.evaluate()
-    trainer.log_metrics("eval", eval_results)
-    trainer.save_metrics("eval", eval_results)
-
-    # Save final results
-    if training_args.local_rank in [-1, 0]:
-        with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
-            final_results = {**metrics, **eval_results}
-            json.dump(final_results, f, indent=2)
 
     logger.info("|/| May the force be with you! Training completed successfully.")
 

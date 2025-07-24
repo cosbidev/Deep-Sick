@@ -41,7 +41,7 @@ def group_texts(examples, block_size=512):
     return result
 
 # New Code #
-def evaluate(args, model, eval_dataloader, accelerator):
+def evaluate(training_args, model, eval_dataloader, accelerator):
     model.eval()
     losses = []
     for step, batch in enumerate(eval_dataloader):
@@ -49,7 +49,7 @@ def evaluate(args, model, eval_dataloader, accelerator):
             outputs = model(**batch)
 
         loss = outputs.loss
-        losses.append(accelerator.gather_for_metrics(loss.repeat(args.per_device_eval_batch_size)))
+        losses.append(accelerator.gather_for_metrics(loss.repeat(training_args.per_device_eval_batch_size)))
 
     losses = torch.cat(losses)
     try:

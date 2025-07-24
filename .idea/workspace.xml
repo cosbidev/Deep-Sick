@@ -4,11 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]">
+      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_z2.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,52 +53,52 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
-    &quot;Python.PreprocessBraxImages.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.analyzer_chexinstruct.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.benchmark_VLM.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.brax.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.chexpert_public.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.createHFDataset.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.demo_rexgradient160k.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.downloadBrax.executor&quot;: &quot;Run&quot;,
-    &quot;Python.downloadMedmax.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.extract_mimic_nle.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_cxr.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_cxr_vqa.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.mimic_nle.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ms_cxr.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.openi.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.padchest_preprocessing.executor&quot;: &quot;Run&quot;,
-    &quot;Python.parallel.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.pipeline.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.preprocessReports.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.preprocessingImagesPadchest.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.rex_gradient.executor&quot;: &quot;Run&quot;,
-    &quot;Python.siim.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.splitFileCreation.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;multi-node&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/deepspeed&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.fonts.default&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_MARK_IGNORED_FILES_AS_EXCLUDED": "true",
+    "Python.PreprocessBraxImages.executor": "Debug",
+    "Python.analyzer_chexinstruct.executor": "Debug",
+    "Python.benchmark_VLM.executor": "Debug",
+    "Python.brax.executor": "Debug",
+    "Python.chexpert_public.executor": "Debug",
+    "Python.createHFDataset.executor": "Debug",
+    "Python.demo_rexgradient160k.executor": "Debug",
+    "Python.downloadBrax.executor": "Run",
+    "Python.downloadMedmax.executor": "Debug",
+    "Python.extract_mimic_nle.executor": "Debug",
+    "Python.mimic_cxr.executor": "Debug",
+    "Python.mimic_cxr_vqa.executor": "Debug",
+    "Python.mimic_nle.executor": "Run",
+    "Python.ms_cxr.executor": "Debug",
+    "Python.openi.executor": "Debug",
+    "Python.padchest_preprocessing.executor": "Run",
+    "Python.parallel.executor": "Debug",
+    "Python.pipeline.executor": "Debug",
+    "Python.preprocessReports.executor": "Debug",
+    "Python.preprocessingImagesPadchest.executor": "Debug",
+    "Python.rex_gradient.executor": "Run",
+    "Python.siim.executor": "Debug",
+    "Python.splitFileCreation.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "false",
+    "git-widget-placeholder": "multi-node",
+    "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/deepspeed" />
       <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/deepspeed" />
       <recent name="$PROJECT_DIR$/src/finetune" />
       <recent name="$PROJECT_DIR$/src/benchmark/batch_size_compiling" />
       <recent name="$PROJECT_DIR$/src/train" />
@@ -803,7 +807,15 @@
       <option name="project" value="LOCAL" />
       <updated>1753291217052</updated>
     </task>
-    <option name="localTasksCounter" value="31" />
+    <task id="LOCAL-00031" summary="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]">
+      <option name="closed" value="true" />
+      <created>1753291313839</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1753291313839</updated>
+    </task>
+    <option name="localTasksCounter" value="32" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -850,7 +862,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Preprocessing Code for mimic" />
     <MESSAGE value="Some advancements on the MIMIC dataset, ..." />
     <MESSAGE value="[PREPROCESSING] New dataset code (COVID-CXR3, CXR14, CHEXPERT, CXR14)" />
     <MESSAGE value="[PREPROCESSING] new datasets, like rexGradient160k. Removal of older dataset not useful." />
@@ -875,7 +886,8 @@
     <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE accelerate config, format_chexinstruct.py correction for any image not readeble (corrupted)." />
     <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration" />
     <MESSAGE value="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
+    <MESSAGE value="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

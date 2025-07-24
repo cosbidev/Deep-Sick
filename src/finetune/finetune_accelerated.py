@@ -345,7 +345,6 @@ def main():
                 world_size=accelerator.num_processes,
                 lengths=train_dataset["length"],
                 n_images=train_dataset["n_of_images"],
-                image_seq_len=256
         )
 
         sampler_val = BlueprintGroupedSampler(
@@ -353,7 +352,6 @@ def main():
                 world_size=accelerator.num_processes,
                 lengths=eval_dataset["length"],
                 n_images=eval_dataset["n_of_images"],
-                image_seq_len=256
         )
 
         # Crea una versione parziale della funzione con i parametri fissi
@@ -620,6 +618,7 @@ def main():
     accelerator.end_training()
 
     print("|/| May the force be with you! Training completed successfully.")
+
 
 
 if __name__ == "__main__":
