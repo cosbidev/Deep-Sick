@@ -61,6 +61,7 @@ from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import DummyOptim, DummyScheduler, set_seed
 
+
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
 from util_finetune import evaluate, BlueprintGroupedSampler
@@ -228,6 +229,7 @@ def main():
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
     # in the environment
     # ----------------------------------- Accelerator Initialization -----------------------------------
+
     accelerator = (
             Accelerator(
                     log_with=args.report_to,
