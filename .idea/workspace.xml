@@ -5,14 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]">
-      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_z2.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero2.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero3.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3.sh" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_v2.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,7 +34,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="main" />
+        <entry key="$PROJECT_DIR$" value="multi-node" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -85,13 +86,13 @@
     "WebServerToolWindowPanel.toolwindow.show.date": "false",
     "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
     "WebServerToolWindowPanel.toolwindow.show.size": "false",
-    "git-widget-placeholder": "multi-node",
+    "git-widget-placeholder": "main",
     "last_opened_file_path": "/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "editor.preferences.fonts.default",
+    "settings.editor.selected.configurable": "com.github.copilot.settings.keymap.KeymapConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>

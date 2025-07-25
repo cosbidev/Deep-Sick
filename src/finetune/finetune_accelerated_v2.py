@@ -723,6 +723,11 @@ def main():
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps
             )
 
+
+
+            pixel_values = batch['pixel_values']  # shape: (B, C, H, W)
+            device = pixel_values.device
+            logger.info(f"[DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device}")
             # Gradient accumulation
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
                 optimizer.step()
@@ -859,7 +864,6 @@ def main():
     checkpoint = None
     if training_args.resume_from_checkpoint is not None:
         checkpoint = training_args.resume_from_checkpoint
-
 
 
     logger.info("|/| May the force be with you! Training completed successfully.")
