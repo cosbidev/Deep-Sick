@@ -1,27 +1,11 @@
 {
-   "bf16": {
+    "bf16": {
         "enabled": true
     },
-  "fp16": { "enabled": false },
-  "optimizer": {
-    "type": "AdamW",
-    "params": {
-      "lr": "auto",
-      "weight_decay": "auto"
-    }
-  },
-  "scheduler": {
-    "type": "WarmupDecayLR",
-    "params": {
-      "warmup_min_lr": "auto",
-      "warmup_max_lr": "auto",
-      "warmup_num_steps": "auto",
-      "total_num_steps": "auto"
-    }
-  },
-
-
-   "zero_optimization": {
+    "fp16": {
+        "enabled": false
+    },
+    "zero_optimization": {
         "stage": 2,
         "offload_optimizer": { "device": "none" },
         "offload_param": { "device": "none" },
@@ -32,7 +16,6 @@
         "reduce_scatter": true,
         "reduce_bucket_size": 2e8
     },
-
     "gradient_accumulation_steps": "auto",
     "gradient_clipping": "auto",
     "steps_per_print": 2000,

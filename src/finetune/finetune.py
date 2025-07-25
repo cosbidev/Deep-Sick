@@ -7,6 +7,7 @@ from src.dataset import load_parquet_image_dataset
 from trl import SFTTrainer, SFTConfig
 import torch
 
+
 @dataclass
 class ScriptArguments:
     model_name_or_path: str = field(default="google/gemma-3-4b-it")  # Model name or path to the pretrained model

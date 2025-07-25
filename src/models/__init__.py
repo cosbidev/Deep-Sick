@@ -1,7 +1,7 @@
 from .VisionLanguage import VisionLanguageDataCollator
 from .Qwen2_5VL import Qwen25VLCollator, Qwen25VLModel
 from .Gemma3 import GemmaCollator
-from .peft import ModelParameterManager
+from .peft import DeepSpeedCompatibleModelParameterManager
 
 
 # Factory function to model appropriate collator
@@ -71,27 +71,9 @@ def  configure_model_for_training(
     Returns:
         Modello configurato
     """
-    manager = ModelParameterManager(model, **kwargs)
+    manager = DeepSpeedCompatibleModelParameterManager(model, **kwargs)
 
-    if strategy == "lora_standard":
-        return manager.apply_lora_standard(model, **kwargs)
-    elif strategy == "lora_gaussian":
-        return manager.apply_lora_gaussian(model, **kwargs)
-    elif strategy == "lora_pissa":
-        return manager.apply_lora_pissa(model, fast_svd=False, **kwargs)
-    elif strategy == "lora_pissa_fast":
-        return manager.apply_lora_pissa(model, fast_svd=True, **kwargs)
-    elif strategy == "lora_olora":
-        return manager.apply_lora_olora(model, **kwargs)
-    elif strategy == "dora":
-        return manager.apply_lora_dora(model, use_rslora=False, **kwargs)
-    elif strategy == "dora_rslora":
-        return manager.apply_lora_dora(model, use_rslora=True, **kwargs)
-    elif strategy == "qlora":
-        return manager.apply_qora_style(model, **kwargs)
-    elif strategy == "manual_adapter":
-        return manager.apply_manual_adapter(model, **kwargs)
-    else:
-        raise ValueError(f"Unknown strategy: {strategy}")
+    return manager.apply_lora_with_deepspeed_safety(model, **kwargs)
+
 
 

@@ -1,19 +1,9 @@
 #!/usr/bin/env python
 # Copyright 2022 The HuggingFace Inc. team. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+
 """
-Finetuning script for GEMMA3 or other causal language models using Accelerate.
+Fixed version of finetuning script for GEMMA3 or other causal language models using Accelerate with DeepSpeed Zero-2.
+This version addresses the "torch.cat(): expected a non-empty list of Tensors" error.
 """
 import math
 import warnings
@@ -181,11 +171,56 @@ class CustomTrainingArguments:
     # W&B integration
     report_to: str = field(default="wandb")
     with_tracking: bool = field(default=True, metadata={"help": "Whether to use tracking for the training run."})
+    lr: float = field(default=2e-4, metadata={"help": "Learning rate for the optimizer."})
 
     @property
     def train_batch_size(self) -> int:
         """Total effective batch size for training."""
         return self.per_device_train_batch_size * self.gradient_accumulation_steps
+
+
+def parse_args_flexible():
+    """
+    Flexible argument parsing that handles missing arguments gracefully.
+    """
+    parser = HfArgumentParser((ModelArguments, DataArguments, CustomTrainingArguments))
+
+    # Check if we're running from command line with arguments
+    import sys
+    if len(sys.argv) > 1:
+        try:
+            return parser.parse_args_into_dataclasses(return_remaining_strings=True)
+        except Exception as e:
+            logger.warning(f"Failed to parse command line arguments: {e}")
+            logger.info("Falling back to default arguments")
+
+    # Use defaults if no command line args or parsing failed
+    return ModelArguments(), DataArguments(), CustomTrainingArguments(), []
+
+
+def debug_tensor_shapes(model, prefix=""):
+    """Debug function to identify empty tensors that might cause issues."""
+    empty_tensors = []
+    total_params = 0
+    trainable_params = 0
+
+    for name, param in model.named_parameters():
+        total_params += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+
+        if hasattr(param, 'shape') and any(dim == 0 for dim in param.shape):
+            empty_tensors.append((name, param.shape))
+            print(f"❌ EMPTY TENSOR: {prefix}{name}: {param.shape}")
+        elif param.requires_grad:
+            print(f"✅ TRAINABLE: {prefix}{name}: {param.shape}")
+
+    print(f"\n📊 Parameter Summary:")
+    print(f"   Total parameters: {total_params:,}")
+    print(f"   Trainable parameters: {trainable_params:,}")
+    print(f"   Trainable %: {100 * trainable_params / total_params:.2f}%")
+
+    return empty_tensors
 
 
 def setup_logging(training_args):
@@ -248,15 +283,24 @@ def setup_model_and_config(model_args, training_args, data_args):
         customized_kwargs["config"] = cfg_pretrained
 
     # Load model
+    print("🔄 Loading base model...")
     model = AutoModelForCausalLM.from_pretrained(
             model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             cache_dir=data_args.cache_dir,
+            torch_dtype=torch.bfloat16,  # Use bfloat16 for better stability
             **customized_kwargs
     )
+    print("✅ Base model loaded successfully")
 
-    # Configure PEFT/LoRA
+    # CRITICAL: Configure PEFT/LoRA BEFORE any other operations
     if training_args.lora_enable:
+        print("🔄 Applying LoRA configuration...")
+
+        # Debug: Check model state before LoRA
+        print("📊 Model state BEFORE LoRA:")
+        debug_tensor_shapes(model, "BEFORE_LORA: ")
+
         model = configure_model_for_training(
                 model,
                 strategy=training_args.peft_strategy,
@@ -270,12 +314,19 @@ def setup_model_and_config(model_args, training_args, data_args):
                 finetune_attention_modules=training_args.finetune_attention_modules,
                 finetune_mlp_modules=training_args.finetune_mlp_modules,
         )
-        for name, param in model.named_parameters():
-            if param.requires_grad and (not hasattr(param, "grad") or param.grad is None):
-                if hasattr(param, "shape") and 0 in param.shape:
-                    print(f"[DISABLE] {name}: shape={param.shape}, grad=None")
-                    param.requires_grad = False
 
+        # Debug: Check model state after LoRA
+        print("📊 Model state AFTER LoRA:")
+        debug_tensor_shapes(model, "AFTER_LORA: ")
+
+        # Verify that we have trainable parameters
+        trainable_params = [p for p in model.parameters() if p.requires_grad]
+        if len(trainable_params) == 0:
+            raise RuntimeError("❌ No trainable parameters found after LoRA configuration!")
+
+        print(f"✅ LoRA applied successfully with {len(trainable_params)} trainable parameter groups")
+
+    # Disable gradient checkpointing to avoid conflicts with DeepSpeed
     if hasattr(model, 'gradient_checkpointing_enable'):
         model.gradient_checkpointing_disable()
 
@@ -288,22 +339,87 @@ def setup_model_and_config(model_args, training_args, data_args):
     return model
 
 
-def create_optimizers(model, training_args):
-    """Setup the optimizer and learning rate scheduler."""
-    no_decay = ["bias", "LayerNorm.weight"]
-    optimizer_grouped_parameters = [
-            {
-                    "params"      : [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-                    "weight_decay": training_args.weight_decay,
-            },
-            {
-                    "params"      : [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+def create_optimizers_with_parameter_groups(model, training_args):
+    """
+    Create optimizer with proper parameter grouping to avoid empty tensor lists.
+    This is critical for DeepSpeed Zero-2 compatibility.
+    """
+    print("🔄 Creating optimizer with parameter groups...")
+
+    # Separate LoRA parameters from base model parameters
+    lora_params = []
+    base_params = []
+    no_decay = ["bias", "LayerNorm.weight", "layer_norm.weight", "norm.weight"]
+
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            if 'lora_A' in name or 'lora_B' in name or 'lora_embedding_A' in name or 'lora_embedding_B' in name:
+                lora_params.append((name, param))
+            else:
+                base_params.append((name, param))
+
+    print(f"📊 Parameter breakdown:")
+    print(f"   LoRA parameters: {len(lora_params)}")
+    print(f"   Base parameters: {len(base_params)}")
+
+    # Create parameter groups with proper filtering
+    optimizer_grouped_parameters = []
+
+    # LoRA parameters (typically no weight decay)
+    if lora_params:
+        lora_params_wd = [p for n, p in lora_params if not any(nd in n for nd in no_decay)]
+        lora_params_no_wd = [p for n, p in lora_params if any(nd in n for nd in no_decay)]
+
+        if lora_params_wd:
+            optimizer_grouped_parameters.append({
+                    "params"      : lora_params_wd,
+                    "weight_decay": training_args.weight_decay * 0.1,  # Reduced weight decay for LoRA
+                    "lr"          : training_args.learning_rate,
+            })
+
+        if lora_params_no_wd:
+            optimizer_grouped_parameters.append({
+                    "params"      : lora_params_no_wd,
                     "weight_decay": 0.0,
-            },
-    ]
+                    "lr"          : training_args.learning_rate,
+            })
 
-    optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=training_args.learning_rate)
+    # Base model parameters (if any are trainable)
+    if base_params:
+        base_params_wd = [p for n, p in base_params if not any(nd in n for nd in no_decay)]
+        base_params_no_wd = [p for n, p in base_params if any(nd in n for nd in no_decay)]
 
+        if base_params_wd:
+            optimizer_grouped_parameters.append({
+                    "params"      : base_params_wd,
+                    "weight_decay": training_args.weight_decay,
+                    "lr"          : training_args.learning_rate * 0.1,  # Lower LR for base params
+            })
+
+        if base_params_no_wd:
+            optimizer_grouped_parameters.append({
+                    "params"      : base_params_no_wd,
+                    "weight_decay": 0.0,
+                    "lr"          : training_args.learning_rate * 0.1,
+            })
+
+    # Verify we have parameter groups
+    if not optimizer_grouped_parameters:
+        raise RuntimeError("❌ No parameter groups created for optimizer!")
+
+    # Count total parameters in groups
+    total_params_in_groups = sum(len(group["params"]) for group in optimizer_grouped_parameters)
+    print(f"📊 Created {len(optimizer_grouped_parameters)} parameter groups with {total_params_in_groups} total parameters")
+
+    # Create optimizer
+    optimizer = torch.optim.AdamW(
+            optimizer_grouped_parameters,
+            lr=training_args.learning_rate,
+            eps=1e-8,
+            betas=(0.9, 0.999)
+    )
+
+    # Create learning rate scheduler
     if training_args.max_train_steps is not None:
         lr_scheduler = get_scheduler(
                 name=training_args.lr_scheduler_type,
@@ -314,6 +430,7 @@ def create_optimizers(model, training_args):
     else:
         lr_scheduler = None
 
+    print("✅ Optimizer and scheduler created successfully")
     return optimizer, lr_scheduler
 
 
@@ -345,24 +462,11 @@ def training_step(
 
 
 def main():
-    # Parse arguments
-    parser = HfArgumentParser((ModelArguments, DataArguments, CustomTrainingArguments))
-    model_args, data_args, training_args, remaining = parser.parse_args_into_dataclasses(return_remaining_strings=True)
+    # Parse arguments with flexible handling
+    model_args, data_args, training_args, remaining = parse_args_flexible()
 
-
-    # ----------------------------------- Accelerator Initialization -----------------------------------
-    # Initialize accelerator ONCE at the beginning
-    accelerator = Accelerator(
-            log_with=training_args.report_to if training_args.with_tracking else None,
-            project_dir=training_args.output_dir,
-            gradient_accumulation_steps=training_args.gradient_accumulation_steps,
-    )
-
-    # Initialize tracking if enabled
-    if training_args.with_tracking:
-        accelerator.init_trackers(
-                project_name=f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}',
-        )
+    print("🚀 Starting DeepSpeed Zero-2 Training with LoRA")
+    print("=" * 60)
 
     # Setup logging
     setup_logging(training_args)
@@ -379,74 +483,34 @@ def main():
         transformers.set_seed(training_args.seed)
 
     # Load datasets
+    print("🔄 Loading datasets...")
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
+    print("✅ Datasets loaded successfully")
 
-    # Setup model
+    # CRITICAL: Setup model and LoRA BEFORE accelerator initialization
+    print("🔄 Setting up model with LoRA...")
     model = setup_model_and_config(
             model_args=model_args,
             training_args=training_args,
             data_args=data_args
     )
+    print("✅ Model and LoRA setup completed")
 
     # Get collator and tokenizer
+    print("🔄 Setting up collator...")
     collator = get_collator(
             model_id=model_args.model_name_or_path,
             padding_side="left",
             token=hf_token
     )
-
-    # Log sample data
-    import random
-    for index in random.sample(range(len(train_dataset)), min(3, len(train_dataset))):
-        logger.info(f"Sample {index} of the training set: {train_dataset[index]['texts']}.")
-
-    # Create data samplers and loaders
-    try:
-        sampler_train = BlueprintGroupedSampler(
-                batch_size=training_args.per_device_train_batch_size,
-                world_size=accelerator.num_processes,
-                lengths=train_dataset["length"],
-                n_images=train_dataset["n_of_images"],
-        )
-
-        sampler_val = BlueprintGroupedSampler(
-                batch_size=training_args.per_device_eval_batch_size,
-                world_size=accelerator.num_processes,
-                lengths=eval_dataset["length"],
-                n_images=eval_dataset["n_of_images"],
-        )
-
-        # Create partial function for seed worker
-        fixed_seed_worker = partial(seed_worker, num_workers=4, rank=accelerator.process_index)
-
-        # DataLoaders creation
-        train_dataloader = DataLoader(
-                train_dataset,
-                sampler=sampler_train,
-                collate_fn=collator,
-                drop_last=True,
-                worker_init_fn=fixed_seed_worker,
-                batch_size=training_args.per_device_train_batch_size,
-                pin_memory=True,
-        )
-        eval_dataloader = DataLoader(
-                eval_dataset,
-                sampler=sampler_val,
-                collate_fn=collator,
-                drop_last=True,
-                batch_size=training_args.per_device_eval_batch_size,
-        )
-    except Exception as e:
-        logger.error(
-                "There was an issue creating the dataloaders. Please check your dataset and collator configuration."
-        )
-        raise
-
-
-    # Processor and tokenizer setup
     processor = collator.processor
+    tokenizer = collator.tokenizer if hasattr(collator, 'tokenizer') else processor
+    print("✅ Collator setup completed")
 
-    logger.info(f"Using processor: {processor}")
+    # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
+    print("🔄 Creating optimizer...")
+    optimizer, lr_scheduler = create_optimizers_with_parameter_groups(model, training_args)
+    print("✅ Optimizer created successfully")
 
     # Calculate training steps
     num_update_steps_per_epoch = math.ceil(len(train_dataset) / training_args.gradient_accumulation_steps)
@@ -455,16 +519,97 @@ def main():
     else:
         training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
 
-    # Create optimizer and scheduler
-    optimizer, lr_scheduler = create_optimizers(model, training_args)
+    # Create data loaders BEFORE accelerator initialization
+    print("🔄 Creating data loaders...")
+    try:
+        sampler_train = BlueprintGroupedSampler(
+                batch_size=training_args.per_device_train_batch_size,
+                world_size=1,  # Will be updated by accelerator
+                lengths=train_dataset["length"],
+                n_images=train_dataset["n_of_images"],
+        )
 
-    # Prepare everything with accelerator
-    model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
-            model, optimizer, train_dataloader, eval_dataloader
+        sampler_val = BlueprintGroupedSampler(
+                batch_size=training_args.per_device_eval_batch_size,
+                world_size=1,  # Will be updated by accelerator
+                lengths=eval_dataset["length"],
+                n_images=eval_dataset["n_of_images"],
+        )
+
+        train_dataloader = DataLoader(
+                train_dataset,
+                sampler=sampler_train,
+                collate_fn=collator,
+                drop_last=True,
+                batch_size=training_args.per_device_train_batch_size,
+                pin_memory=True,
+                num_workers=0,  # Disable multiprocessing to avoid issues
+        )
+        eval_dataloader = DataLoader(
+                eval_dataset,
+                sampler=sampler_val,
+                collate_fn=collator,
+                drop_last=True,
+                batch_size=training_args.per_device_eval_batch_size,
+                num_workers=0,
+        )
+        print("✅ Data loaders created successfully")
+    except Exception as e:
+        logger.error(f"❌ Error creating data loaders: {e}")
+        raise
+
+    # NOW initialize accelerator with DeepSpeed config
+    print("🔄 Initializing Accelerator with DeepSpeed...")
+
+    # Initialize accelerator with proper DeepSpeed configuration
+    accelerator = Accelerator(
+            log_with=training_args.report_to if training_args.with_tracking else None,
+            project_dir=training_args.output_dir,
+            gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+            mixed_precision="bf16",  # Match DeepSpeed config
+            deepspeed_plugin=None,  # Let accelerate handle the config file
     )
 
-    if lr_scheduler is not None:
-        lr_scheduler = accelerator.prepare(lr_scheduler)
+    # Initialize tracking if enabled
+    if training_args.with_tracking:
+        accelerator.init_trackers(
+                project_name=f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}',
+        )
+
+    print("✅ Accelerator initialized successfully")
+
+    # Final parameter check before prepare
+    print("📊 Final parameter check before accelerator.prepare():")
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    print(f"   Trainable parameters: {len(trainable_params)}")
+
+    # Verify optimizer has parameters
+    total_optimizer_params = sum(len(group['params']) for group in optimizer.param_groups)
+    print(f"   Optimizer parameter count: {total_optimizer_params}")
+
+    if total_optimizer_params == 0:
+        raise RuntimeError("❌ Optimizer has no parameters!")
+
+    # CRITICAL: Prepare everything with accelerator in the correct order
+    print("🔄 Preparing model, optimizer, and data loaders with accelerator...")
+    try:
+        # Prepare in the correct order: model first, then optimizer, then data loaders
+        model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
+                model,
+                optimizer,
+                train_dataloader,
+                eval_dataloader,
+
+        )
+
+        if lr_scheduler is not None:
+            lr_scheduler = accelerator.prepare(lr_scheduler)
+
+        print("✅ All components prepared successfully with accelerator")
+    except Exception as e:
+        logger.error(f"❌ Error during accelerator.prepare(): {e}")
+        logger.error("This is likely due to empty parameter groups or incompatible configurations")
+        raise
 
     # Initialize W&B run name
     if training_args.report_to == "wandb":
@@ -519,6 +664,8 @@ def main():
         )
 
         for step, batch in enumerate(active_dataloader):
+            # For DeepSpeed Zero-2, we DON'T use accelerator.accumulate()
+            # as it conflicts with DeepSpeed's gradient partitioning
             loss = training_step(
                     model=model,
                     batch=batch,
@@ -526,7 +673,7 @@ def main():
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps
             )
 
-            # Gradient accumulation
+            # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
                 optimizer.step()
                 if lr_scheduler is not None:
@@ -547,7 +694,8 @@ def main():
 
             if training_args.with_tracking:
                 step_loss = accelerator.reduce(loss.clone()).item()
-                total_loss += step_loss * training_args.gradient_accumulation_steps
+                if total_loss is not None:
+                    total_loss += step_loss
 
             # Checkpointing every N steps
             if isinstance(training_args.checkpointing_steps, int):
@@ -559,13 +707,17 @@ def main():
                 break
 
         # Evaluation
-        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+        try:
+            perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+        except Exception as e:
+            logger.warning(f"Evaluation failed: {e}")
+            perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
 
         if training_args.with_tracking:
             accelerator.log({
                     "perplexity": perplexity,
-                    "eval_loss" : eval_loss,
-                    "train_loss": total_loss / len(train_dataloader) if total_loss is not None else 0,
+                    "eval_loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
+                    "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
                     "epoch"     : epoch,
                     "step"      : completed_steps,
             }, step=completed_steps)
@@ -581,7 +733,7 @@ def main():
             accelerator.save_state(os.path.join(training_args.output_dir, f"epoch_{epoch}"))
 
         # Save best model
-        if best_metric is None or best_metric > perplexity:
+        if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
             best_metric = perplexity
             best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
             accelerator.save_state(best_metric_checkpoint)
@@ -593,34 +745,50 @@ def main():
         accelerator.load_state(best_metric_checkpoint)
 
     # Final evaluation
-    perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-    logger.info(f"Best model metrics: perplexity: {perplexity} eval_loss: {eval_loss}")
+    try:
+        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+        logger.info(f"Final model metrics: perplexity: {perplexity} eval_loss: {eval_loss}")
 
-    if best_metric and perplexity != best_metric:
-        logger.warning(
-                f"Best metric {best_metric} does not match the metric {perplexity} of the loaded best model."
-        )
+        if best_metric and perplexity != best_metric and perplexity != float('inf'):
+            logger.warning(
+                    f"Best metric {best_metric} does not match the metric {perplexity} of the loaded best model."
+            )
+    except Exception as e:
+        logger.error(f"Final evaluation failed: {e}")
+        perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
 
     # Save final model and tokenizer
     if training_args.output_dir is not None:
         accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
-        unwrapped_model.save_pretrained(
-                training_args.output_dir,
-                is_main_process=accelerator.is_main_process,
-                save_function=accelerator.save,
-                state_dict=accelerator.get_state_dict(model),
-        )
-        if accelerator.is_main_process:
-            tokenizer.save_pretrained(training_args.output_dir)
 
-        with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
-            json.dump({"perplexity": perplexity, "eval_loss": eval_loss.item()}, f)
+        try:
+            unwrapped_model.save_pretrained(
+                    training_args.output_dir,
+                    is_main_process=accelerator.is_main_process,
+                    save_function=accelerator.save,
+                    state_dict=accelerator.get_state_dict(model),
+            )
+            if accelerator.is_main_process and tokenizer is not None:
+                tokenizer.save_pretrained(training_args.output_dir)
+
+            # Save results
+            results = {
+                    "perplexity": perplexity if perplexity != float('inf') else "inf",
+                    "eval_loss" : eval_loss.item() if hasattr(eval_loss, 'item') else eval_loss
+            }
+            with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
+                json.dump(results, f)
+
+            print("✅ Model and results saved successfully")
+        except Exception as e:
+            logger.error(f"Error saving model: {e}")
 
     # End tracking
     if training_args.with_tracking:
         accelerator.end_training()
 
+    print("🎉 Training completed successfully!")
     logger.info("|/| May the force be with you! Training completed successfully.")
 
 

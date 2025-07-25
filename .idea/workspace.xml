@@ -4,12 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]">
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 2.1 ] The finetune_accelerated.py is the same. The Trainer function is new, Some other correction to bugs. The training now is stable.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/peft.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/peft.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -812,7 +816,15 @@
       <option name="project" value="LOCAL" />
       <updated>1753291313839</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="[Fine-tune-accelerated 2.1 ] The finetune_accelerated.py is the same. The Trainer function is new, Some other correction to bugs. The training now is stable.">
+      <option name="closed" value="true" />
+      <created>1753355177973</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1753355177973</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -824,6 +836,28 @@
     <option featureType="dependencySupport" implementationName="javascript:npm:vite" />
     <option featureType="dependencySupport" implementationName="javascript:npm:pug" />
     <option featureType="dependencySupport" implementationName="executable:kubectl" />
+  </component>
+  <component name="Vcs.Log.History.Properties">
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/main" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="main" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="OPEN_GENERIC_TABS">
@@ -859,7 +893,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Some advancements on the MIMIC dataset, ..." />
     <MESSAGE value="[PREPROCESSING] New dataset code (COVID-CXR3, CXR14, CHEXPERT, CXR14)" />
     <MESSAGE value="[PREPROCESSING] new datasets, like rexGradient160k. Removal of older dataset not useful." />
     <MESSAGE value="[PREPROCESSING] reorganization of work, exclusion of different datasets." />
@@ -884,7 +917,8 @@
     <MESSAGE value="[Fine-tune-accelerated 1.6 ]['MULTI NODE'][more data bug][mix] MULTI NODE working correctly with some debug configuration" />
     <MESSAGE value="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
     <MESSAGE value="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
+    <MESSAGE value="[Fine-tune-accelerated 2.1 ] The finetune_accelerated.py is the same. The Trainer function is new, Some other correction to bugs. The training now is stable." />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 2.1 ] The finetune_accelerated.py is the same. The Trainer function is new, Some other correction to bugs. The training now is stable." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -983,11 +1017,6 @@
           <option name="timeStamp" value="316" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/finetune/finetune.py</url>
-          <line>1</line>
-          <option name="timeStamp" value="319" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/models/VisionLanguage.py</url>
           <line>11</line>
           <option name="timeStamp" value="337" />
@@ -998,8 +1027,9 @@
           <option name="timeStamp" value="339" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/models/Gemma3.py</url>
-          <option name="timeStamp" value="340" />
+          <url>file://$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py</url>
+          <line>414</line>
+          <option name="timeStamp" value="343" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
