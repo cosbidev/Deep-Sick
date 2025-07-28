@@ -1,7 +1,8 @@
 /data/
 /CheXagent/
 /.venv/
-/.idea/
+/.idea
+
 /mimic-cxr/
 /LLaVA-NeXT/
 /unsloth/

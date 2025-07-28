@@ -4,18 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 2.1 ] The finetune_accelerated.py is the same. The Trainer function is new, Some other correction to bugs. The training now is stable.">
-      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero2.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero3.sh" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 2.5 ] MAJOR REVIEW, same memory space but doubled the size of the batch.  &#10;- Gradient Checkpointing issues solved (accelerate)&#10;- Some bugs related to unstability of the gradient calculations!&#10;- zero2 is the most stable solution (for now)">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_z2.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_z2.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_zero2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_v2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/models/peft.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/peft.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero2.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero2.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero3.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero3.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -826,7 +823,15 @@
       <option name="project" value="LOCAL" />
       <updated>1753355177973</updated>
     </task>
-    <option name="localTasksCounter" value="33" />
+    <task id="LOCAL-00033" summary="[Fine-tune-accelerated 2.5 ] MAJOR REVIEW, same memory space but doubled the size of the batch.  &#10;- Gradient Checkpointing issues solved (accelerate)&#10;- Some bugs related to unstability of the gradient calculations!&#10;- zero2 is the most stable solution (for now)">
+      <option name="closed" value="true" />
+      <created>1753709886669</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1753709886669</updated>
+    </task>
+    <option name="localTasksCounter" value="34" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -895,7 +900,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="[PREPROCESSING] New dataset code (COVID-CXR3, CXR14, CHEXPERT, CXR14)" />
     <MESSAGE value="[PREPROCESSING] new datasets, like rexGradient160k. Removal of older dataset not useful." />
     <MESSAGE value="[PREPROCESSING] reorganization of work, exclusion of different datasets." />
     <MESSAGE value="[PREPROCESSING] mimic_cxr.py and chexpert_public.py completed for compilation, rexAgent160k missing." />
@@ -920,7 +924,8 @@
     <MESSAGE value="[Fine-tune-accelerated 1.8 ] [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
     <MESSAGE value="[Fine-tune-accelerated 1.8 ] CHECKOUT [Restoring finetune_accelerated.py to the commit [96e85956c07b13f7be514e4f296b232ded7372b4]" />
     <MESSAGE value="[Fine-tune-accelerated 2.1 ] The finetune_accelerated.py is the same. The Trainer function is new, Some other correction to bugs. The training now is stable." />
-    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 2.1 ] The finetune_accelerated.py is the same. The Trainer function is new, Some other correction to bugs. The training now is stable." />
+    <MESSAGE value="[Fine-tune-accelerated 2.5 ] MAJOR REVIEW, same memory space but doubled the size of the batch.  &#10;- Gradient Checkpointing issues solved (accelerate)&#10;- Some bugs related to unstability of the gradient calculations!&#10;- zero2 is the most stable solution (for now)" />
+    <option name="LAST_COMMIT_MESSAGE" value="[Fine-tune-accelerated 2.5 ] MAJOR REVIEW, same memory space but doubled the size of the batch.  &#10;- Gradient Checkpointing issues solved (accelerate)&#10;- Some bugs related to unstability of the gradient calculations!&#10;- zero2 is the most stable solution (for now)" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

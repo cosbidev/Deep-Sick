@@ -162,14 +162,15 @@ class CustomTrainingArguments:
     save_every_n_epochs: Optional[int] = field(default=None, metadata={"help": "Save every n epochs."})
     resume_from_checkpoint: Optional[str] = field(default=None, metadata={"help": "Path to checkpoint to resume from."})
 
+
     # Evaluation and best model
     load_best_model: bool = field(default=False, metadata={"help": "Whether to load the best model at the end of training."})
-
+    eval_steps: int = field(default=None, metadata={"help": "Evaluate every n steps."})
     # W&B integration
     report_to: str = field(default="wandb")
     with_tracking: bool = field(default=True, metadata={"help": "Whether to use tracking for the training run."})
     lr: float = field(default=2e-4, metadata={"help": "Learning rate for the optimizer."})
-
+    debug: bool = field(default=False, metadata={"help": "Whether to run in debug mode with fewer epochs and smaller batch size."})
     @property
     def train_batch_size(self) -> int:
         """Total effective batch size for training."""
@@ -512,6 +513,12 @@ def main():
     # Load datasets
     print("🔄 Loading datasets...")
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
+    if training_args.debug:
+        # Reduce dataset size for debugging purposes
+        train_dataset = train_dataset.select(range(1000))
+        eval_dataset = eval_dataset.select(range(1000))
+
+
     print("✅ Datasets loaded successfully")
 
     # CRITICAL: Setup model and LoRA BEFORE accelerator initialization
@@ -555,6 +562,10 @@ def main():
         training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
     else:
         training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
+
+
+    if not training_args.eval_steps:
+        training_args.eval_steps = int(num_update_steps_per_epoch / 2)
     # Create data loaders BEFORE accelerator initialization
     print("🔄 Creating data loaders...")
     try:
@@ -565,12 +576,13 @@ def main():
                 n_images=train_dataset["n_of_images"],
         )
 
-        sampler_val = BlueprintGroupedSampler(
-                batch_size=training_args.per_device_eval_batch_size,
-                world_size= accelerator.num_processes,
-                lengths=eval_dataset["length"],
-                n_images=eval_dataset["n_of_images"],
-        )
+        # sampler_val = BlueprintGroupedSampler(
+        #         batch_size=training_args.per_device_eval_batch_size,
+        #         world_size= accelerator.num_processes,
+        #         lengths=eval_dataset["length"],
+        #         n_images=eval_dataset["n_of_images"],
+        # )
+
 
         train_dataloader = DataLoader(
                 train_dataset,
@@ -583,9 +595,10 @@ def main():
         )
         eval_dataloader = DataLoader(
                 eval_dataset,
-                sampler=sampler_val,
+                # sampler=sampler_val,
                 collate_fn=collator,
                 drop_last=True,
+                pin_memory=True,
                 batch_size=training_args.per_device_eval_batch_size,
                 num_workers=0,
         )
@@ -641,7 +654,6 @@ def main():
                 train_dataloader,
                 eval_dataloader,
         )
-
 
         # Uso:
         loss = call_forward_dummy(model.module.dummy_inputs, model)
@@ -706,11 +718,12 @@ def main():
         )
         for step, batch in enumerate(active_dataloader):
             # For DeepSpeed Zero-2, we DON'T use accelerator.accumulate()
-            pixel_values = batch['pixel_values']  # shape: (B, C, H, W)
-            device = pixel_values.device
+            if training_args.debug:
+                pixel_values = batch['pixel_values']  # shape: (B, C, H, W)
+                device = pixel_values.device
 
-            logger.info(f"[DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device} || {completed_steps}")
-            # as it conflicts with DeepSpeed's gradient partitioning
+                logger.info(f"[DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device} || {completed_steps}")
+                # as it conflicts with DeepSpeed's gradient partitioning
             loss = training_step(
                     model=model,
                     batch=batch,
@@ -750,8 +763,15 @@ def main():
 
             if completed_steps >= training_args.max_train_steps:
                 break
+            if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
+                # Evaluation
+                try:
+                    perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+                except Exception as e:
+                    logger.warning(f"Evaluation failed: {e}")
+                    perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
+                accelerator.log({"perplexity": perplexity, "eval_loss": eval_loss}, step=completed_steps)
 
-        # Evaluation
         try:
             perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
         except Exception as e:

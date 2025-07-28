@@ -40,6 +40,7 @@ def group_texts(examples, block_size=512):
     result["labels"] = result["input_ids"].copy()
     return result
 
+
 # New Code #
 def evaluate(training_args, model, eval_dataloader, accelerator):
     model.eval()

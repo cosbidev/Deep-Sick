@@ -38,6 +38,7 @@ export PYTHONPATH=${workspaceFolder}
 accelerate launch \
     --num_processes 2 \
     --num_machines 1 \
+    --mixed_precision bf16 \
     --main_process_port 29800 \
     --config_file deepspeed/ds_zero3_config.yaml \
     src/finetune/finetune_accelerated_v2.py \
@@ -59,7 +60,8 @@ accelerate launch \
     --lora_alpha 64 \
     --lora_r 64 \
     --peft_strategy "lora_gaussian" \
-    --gradient_accumulation_steps 4 \
+    --gradient_accumulation_steps 8 \
+    --gradient_checkpointing true \
     --save_strategy "epoch" \
     --evaluation_strategy "epoch" \
     --logging_steps 10 \
@@ -67,6 +69,5 @@ accelerate launch \
     --load_best_model_at_end false \
     --metric_for_best_model "eval_loss" \
     --greater_is_better false \
-    --bf16 true \
     --remove_unused_columns false \
     --verbose_logging true

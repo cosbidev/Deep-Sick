@@ -38,6 +38,7 @@ export PYTHONPATH=${workspaceFolder}
 accelerate launch \
     --num_processes 2 \
     --num_machines 1 \
+    --mixed_precision bf16 \
     --main_process_port 29800 \
     --config_file deepspeed/ds_zero2_config.yaml \
     src/finetune/finetune_accelerated_v2.py \
@@ -48,7 +49,7 @@ accelerate launch \
     --learning_rate "2e-4" \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
-    --num_train_epochs 2 \
+    --num_train_epochs 3 \
     --report_to "wandb" \
     --preprocessing_num_workers 1 \
     --weight_decay "0.0" \
@@ -58,15 +59,16 @@ accelerate launch \
     --lora_enable true \
     --lora_alpha 64 \
     --lora_r 64 \
+    --gradient_checkpointing true \
     --peft_strategy "lora_gaussian" \
-    --gradient_accumulation_steps 4 \
+    --gradient_accumulation_steps 8 \
     --save_strategy "epoch" \
     --evaluation_strategy "epoch" \
     --logging_steps 10 \
     --save_total_limit 3 \
     --load_best_model_at_end false \
+    --eval_steps 50 \
     --metric_for_best_model "eval_loss" \
     --greater_is_better false \
-    --bf16 true \
     --remove_unused_columns false \
     --verbose_logging true
