@@ -34,19 +34,21 @@ export PYTHONPATH=${workspaceFolder}
 
 
 # Launch with Accelerate
-accelerate launch   --config_file deepspeed/ds_zero2_config.yaml  --num_processes 2 --num_machines 1 --main_process_port 29700 src/finetune/finetune_accelerated.py \
-                    --model_name_or_path google/gemma-3-4b-it \
-                    --dataset_name chexinstruct \
-                    --dataset_dir data_chexinstruct/hf_parquet_gemma_format/gemma_findings \
-                    --output_dir ./reports/finetune_gemma_findings \
-                    --learning_rate 2e-4 \
-                    --per_device_train_batch_size 4 \
-                    --per_device_eval_batch_size 2 \
-                    --num_train_epochs 10 \
-                    --with_tracking \
-                    --report_to wandb \
-                    --gradient_accumulation_steps 4 \
-                    --save_every_n_epochs 2 \
-                    --load_best_model \
-                    --lora_enable
-
+accelerate launch   \
+    --config_file deepspeed/ds_zero3_config.yaml \
+    --num_processes 2 \
+    --num_machines 1 \
+    --main_process_port 29700 src/finetune/finetune_accelerated.py  \
+    --model_name_or_path google/gemma-3-4b-it \
+    --dataset_name chexinstruct \
+    --dataset_dir data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings \
+    --output_dir ./reports/finetune_gemma_3_findings \
+    --learning_rate 2e-4 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --num_train_epochs 10 \
+    --with_tracking \
+    --report_to wandb \
+    --gradient_accumulation_steps 4 \
+    --save_every_n_epochs 2 \
+    --load_best_model \

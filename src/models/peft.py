@@ -126,6 +126,11 @@ class DeepSpeedCompatibleModelParameterManager:
 
         # Get target modules using regex pattern
         try:
+            # set layer to unfreeze if needed
+            layer_to_unfreeze = kwargs.get("layer_to_unfreeze", [])
+
+
+
             self.target_modules = get_peft_regex(
                     model,
                     finetune_vision_layers=finetune_vision_layers,
@@ -143,14 +148,32 @@ class DeepSpeedCompatibleModelParameterManager:
         """Return the target modules for LoRA."""
         return self.target_modules
 
-    @staticmethod
-    def freeze_all_parameters(model):
-        """Freeze all model parameters."""
+
+    def freeze_all_parameters(self, model, layer_to_unfreeze: List[str] = None):
+        """
+        Freeze all model parameters except those whose names match any pattern in `layer_to_unfreeze`.
+
+        Args:
+            model: PyTorch model whose parameters will be frozen.
+            layer_to_unfreeze (List[str], optional): List of substrings; parameters containing
+                                                     any of these substrings in their name will remain trainable.
+        """
+        if layer_to_unfreeze is None:
+            layer_to_unfreeze = []
+
         frozen_count = 0
-        for param in model.parameters():
-            param.requires_grad = False
-            frozen_count += 1
-        print(f"🧊 Froze {frozen_count} parameters")
+        unfrozen_count = 0
+
+        for name, param in model.named_parameters():
+            # Sblocca solo se il nome contiene uno dei pattern indicati
+            if any(keyword in name for keyword in layer_to_unfreeze):
+                param.requires_grad = True
+                unfrozen_count += 1
+            else:
+                param.requires_grad = False
+                frozen_count += 1
+
+        print(f"🔒 Frozen parameters: {frozen_count}, Unfrozen parameters: {unfrozen_count}")
 
     @staticmethod
     def verify_trainable_parameters(model):
@@ -204,7 +227,11 @@ class DeepSpeedCompatibleModelParameterManager:
         print("🔄 Applying LoRA with DeepSpeed safety checks...")
 
         # Step 1: Freeze all parameters
-        self.freeze_all_parameters(model)
+        print("🧊 Freezing all model parameters to ensure DeepSpeed compatibility...")
+        # Selecte some layers to unfreeze if needed
+        self.freeze_all_parameters(model, layer_to_unfreeze=kwargs.get("layer_to_unfreeze", []))
+
+
 
         # Step 2: Get target modules
         target_modules = self.return_target_modules()

@@ -8,13 +8,12 @@ This version addresses the "torch.cat(): expected a non-empty list of Tensors" e
 import math
 import warnings
 from dataclasses import dataclass, field
-from functools import partial
-from typing import Optional, Union, Any, Callable
+from typing import Optional, Any, Callable
 from tqdm import tqdm
 import os
 import json
 import logging
-import torch.nn as nn
+from accelerate.utils import DummyOptim, DummyScheduler, set_seed
 import torch
 import transformers
 from transformers import (
@@ -27,8 +26,6 @@ from accelerate.state import DistributedType
 from torch.utils.data import DataLoader
 
 from transformers import get_scheduler
-from transformers.trainer_utils import seed_worker
-
 # Suppress warnings
 warnings.filterwarnings("ignore")
 
@@ -291,6 +288,8 @@ def setup_model_and_config(model_args, training_args, data_args):
             torch_dtype=torch.bfloat16,  # Use bfloat16 for better stability
             **customized_kwargs
     )
+    # TEST
+    training_args.layer_to_unfreeze = ["lm_head", "multi_modal_projector"]
     print("✅ Base model loaded successfully")
 
     # CRITICAL: Configure PEFT/LoRA BEFORE any other operations
@@ -308,7 +307,7 @@ def setup_model_and_config(model_args, training_args, data_args):
                 lora_alpha=training_args.lora_alpha,
                 lora_dropout=training_args.lora_dropout,
                 bias=training_args.lora_bias,
-                freeze_multimodal=training_args.freeze_multimodal,
+                layer_to_unfreeze=training_args.layer_to_unfreeze,
                 finetune_vision_layers=training_args.finetune_vision_layers,
                 finetune_language_layers=training_args.finetune_language_layers,
                 finetune_attention_modules=training_args.finetune_attention_modules,
@@ -339,7 +338,7 @@ def setup_model_and_config(model_args, training_args, data_args):
     return model
 
 
-def create_optimizers_with_parameter_groups(model, training_args):
+def create_optimizers_with_parameter_groups(model, training_args, accelerator):
     """
     Create optimizer with proper parameter grouping to avoid empty tensor lists.
     This is critical for DeepSpeed Zero-2 compatibility.
@@ -411,16 +410,24 @@ def create_optimizers_with_parameter_groups(model, training_args):
     total_params_in_groups = sum(len(group["params"]) for group in optimizer_grouped_parameters)
     print(f"📊 Created {len(optimizer_grouped_parameters)} parameter groups with {total_params_in_groups} total parameters")
 
-    # Create optimizer
-    optimizer = torch.optim.AdamW(
-            optimizer_grouped_parameters,
-            lr=training_args.learning_rate,
-            eps=1e-8,
-            betas=(0.9, 0.999)
+
+
+    optimizer_cls = (
+            torch.optim.AdamW
+            if accelerator.state.deepspeed_plugin is None
+               or "optimizer" not in accelerator.state.deepspeed_plugin.deepspeed_config
+            else DummyOptim
     )
+    optimizer = optimizer_cls(optimizer_grouped_parameters,
+                              lr=training_args.learning_rate,
+                              eps=1e-8,
+                              betas=(0.9, 0.999))
 
     # Create learning rate scheduler
-    if training_args.max_train_steps is not None:
+    if (
+            accelerator.state.deepspeed_plugin is None
+            or "scheduler" not in accelerator.state.deepspeed_plugin.deepspeed_config
+    ):
         lr_scheduler = get_scheduler(
                 name=training_args.lr_scheduler_type,
                 optimizer=optimizer,
@@ -428,10 +435,29 @@ def create_optimizers_with_parameter_groups(model, training_args):
                 num_training_steps=training_args.max_train_steps,
         )
     else:
-        lr_scheduler = None
-
+        lr_scheduler = DummyScheduler(
+                optimizer, total_num_steps=training_args.max_train_steps, warmup_num_steps=training_args.num_warmup_steps
+        )
     print("✅ Optimizer and scheduler created successfully")
     return optimizer, lr_scheduler
+
+
+def call_forward_dummy(dummy_inputs, model, device="cuda"):
+    model.train()
+
+    # Copia e manda su GPU tutti i tensori
+    dummy = {k: (v.to(device) if hasattr(v, "to") else v)
+             for k, v in dummy_inputs.items()}
+
+    # Aggiungi labels dummy per calcolare la loss
+    dummy["labels"] = dummy["input_ids"].clone()
+
+    # Esegui forward
+    out = model(**dummy)
+    loss = out.loss
+    return loss
+
+
 
 
 def training_step(
@@ -471,6 +497,7 @@ def main():
     # Setup logging
     setup_logging(training_args)
 
+
     # Verbose logging
     if training_args.verbose_logging:
         rank0_print(f"Inspecting experiment hyperparameters:\n")
@@ -494,8 +521,10 @@ def main():
             training_args=training_args,
             data_args=data_args
     )
-    print("✅ Model and LoRA setup completed")
 
+
+
+    print("✅ Model and LoRA setup completed")
     # Get collator and tokenizer
     print("🔄 Setting up collator...")
     collator = get_collator(
@@ -507,31 +536,38 @@ def main():
     tokenizer = collator.tokenizer if hasattr(collator, 'tokenizer') else processor
     print("✅ Collator setup completed")
 
-    # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
-    print("🔄 Creating optimizer...")
-    optimizer, lr_scheduler = create_optimizers_with_parameter_groups(model, training_args)
-    print("✅ Optimizer created successfully")
+    # NOW initialize accelerator with DeepSpeed config
+    print("🔄 Initializing Accelerator with DeepSpeed...")
+
+
+    # Initialize accelerator with proper DeepSpeed configuration
+    accelerator = Accelerator(
+            log_with=training_args.report_to if training_args.with_tracking else None,
+            project_dir=training_args.output_dir,
+            gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+
+    )
 
     # Calculate training steps
-    num_update_steps_per_epoch = math.ceil(len(train_dataset) / training_args.gradient_accumulation_steps)
+    batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes
+    num_update_steps_per_epoch = math.ceil(len(train_dataset) / (batch_size_real * training_args.gradient_accumulation_steps))
     if training_args.max_train_steps is None:
         training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
     else:
         training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
-
     # Create data loaders BEFORE accelerator initialization
     print("🔄 Creating data loaders...")
     try:
         sampler_train = BlueprintGroupedSampler(
                 batch_size=training_args.per_device_train_batch_size,
-                world_size=1,  # Will be updated by accelerator
+                world_size= accelerator.num_processes,
                 lengths=train_dataset["length"],
                 n_images=train_dataset["n_of_images"],
         )
 
         sampler_val = BlueprintGroupedSampler(
                 batch_size=training_args.per_device_eval_batch_size,
-                world_size=1,  # Will be updated by accelerator
+                world_size= accelerator.num_processes,
                 lengths=eval_dataset["length"],
                 n_images=eval_dataset["n_of_images"],
         )
@@ -558,17 +594,13 @@ def main():
         logger.error(f"❌ Error creating data loaders: {e}")
         raise
 
-    # NOW initialize accelerator with DeepSpeed config
-    print("🔄 Initializing Accelerator with DeepSpeed...")
 
-    # Initialize accelerator with proper DeepSpeed configuration
-    accelerator = Accelerator(
-            log_with=training_args.report_to if training_args.with_tracking else None,
-            project_dir=training_args.output_dir,
-            gradient_accumulation_steps=training_args.gradient_accumulation_steps,
-            mixed_precision="bf16",  # Match DeepSpeed config
-            deepspeed_plugin=None,  # Let accelerate handle the config file
-    )
+
+    # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
+    print("🔄 Creating optimizer...")
+    optimizer, lr_scheduler = create_optimizers_with_parameter_groups(model, training_args, accelerator)
+    print("✅ Optimizer created successfully")
+
 
     # Initialize tracking if enabled
     if training_args.with_tracking:
@@ -583,33 +615,44 @@ def main():
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     print(f"   Trainable parameters: {len(trainable_params)}")
 
-    # Verify optimizer has parameters
-    total_optimizer_params = sum(len(group['params']) for group in optimizer.param_groups)
-    print(f"   Optimizer parameter count: {total_optimizer_params}")
-
-    if total_optimizer_params == 0:
-        raise RuntimeError("❌ Optimizer has no parameters!")
-
+    # # Verify optimizer has parameters
+    # total_optimizer_params = sum(len(group['params']) for group in optimizer.param_groups)
+    # print(f"   Optimizer parameter count: {total_optimizer_params}")
+    #
+    # if total_optimizer_params == 0:
+    #     raise RuntimeError("❌ Optimizer has no parameters!")
     # CRITICAL: Prepare everything with accelerator in the correct order
     print("🔄 Preparing model, optimizer, and data loaders with accelerator...")
+
+    try:
+        hasattr(model, 'gradient_checkpointing_enable')
+        model.config.use_cache = False
+        model.gradient_checkpointing_enable(dict(use_reentrant=False))
+    except AttributeError as e:
+        logger.warning(f"❌ Failed to enable gradient checkpointing: {e}")
+        logger.warning("This might be due to model not supporting gradient checkpointing or already enabled.")
+        # Continue without enabling gradient checkpointing if it fails
     try:
         # Prepare in the correct order: model first, then optimizer, then data loaders
-        model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
+        model, optimizer, lr_scheduler, train_dataloader, eval_dataloader = accelerator.prepare(
                 model,
                 optimizer,
+                lr_scheduler,
                 train_dataloader,
                 eval_dataloader,
-
         )
 
-        if lr_scheduler is not None:
-            lr_scheduler = accelerator.prepare(lr_scheduler)
+
+        # Uso:
+        loss = call_forward_dummy(model.module.dummy_inputs, model)
+        print("LOSS GRADIENT:", loss.requires_grad)
 
         print("✅ All components prepared successfully with accelerator")
     except Exception as e:
         logger.error(f"❌ Error during accelerator.prepare(): {e}")
         logger.error("This is likely due to empty parameter groups or incompatible configurations")
         raise
+    # === LoRA + Gradient Checkpointing Safe Enable ===
 
     # Initialize W&B run name
     if training_args.report_to == "wandb":
@@ -651,7 +694,6 @@ def main():
             completed_steps = resume_step
 
     progress_bar.update(completed_steps)
-
     # Training loop
     for epoch in range(starting_epoch, int(training_args.num_train_epochs)):
         model.train()
@@ -662,9 +704,12 @@ def main():
                 if training_args.resume_from_checkpoint and epoch == starting_epoch and resume_step is not None
                 else train_dataloader
         )
-
         for step, batch in enumerate(active_dataloader):
             # For DeepSpeed Zero-2, we DON'T use accelerator.accumulate()
+            pixel_values = batch['pixel_values']  # shape: (B, C, H, W)
+            device = pixel_values.device
+
+            logger.info(f"[DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device} || {completed_steps}")
             # as it conflicts with DeepSpeed's gradient partitioning
             loss = training_step(
                     model=model,
@@ -672,7 +717,6 @@ def main():
                     accelerator=accelerator,
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps
             )
-
             # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
                 optimizer.step()
@@ -682,6 +726,7 @@ def main():
 
                 progress_bar.update(1)
                 completed_steps += 1
+
 
                 if training_args.with_tracking:
                     log_data = {
@@ -731,7 +776,6 @@ def main():
 
         if isinstance(training_args.checkpointing_steps, str) and training_args.checkpointing_steps == "epoch":
             accelerator.save_state(os.path.join(training_args.output_dir, f"epoch_{epoch}"))
-
         # Save best model
         if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
             best_metric = perplexity
@@ -739,11 +783,9 @@ def main():
             accelerator.save_state(best_metric_checkpoint)
             accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
             accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
-
     # Reload best checkpoint
     if training_args.load_best_model and best_metric_checkpoint:
         accelerator.load_state(best_metric_checkpoint)
-
     # Final evaluation
     try:
         perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
@@ -761,7 +803,6 @@ def main():
     if training_args.output_dir is not None:
         accelerator.wait_for_everyone()
         unwrapped_model = accelerator.unwrap_model(model)
-
         try:
             unwrapped_model.save_pretrained(
                     training_args.output_dir,
