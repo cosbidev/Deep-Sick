@@ -16,5 +16,10 @@
 *.tsv
 *.log
 *.pth
+*.pt
+*.pickle
+*.pkl
+
 /src/finetune/Tutorials/
 /Users/filruff/Desktop/PHD/PROGETTI
+
