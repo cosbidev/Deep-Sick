@@ -1,12 +1,10 @@
 {
-
     "bf16": {
         "enabled": "auto"
     },
     "fp16": {
-            "enabled": "auto"},
-
-
+        "enabled": "auto"
+    },
     "optimizer": {
         "type": "AdamW",
         "params": {
@@ -30,8 +28,6 @@
         "offload_optimizer": { "device": "none" },
         "offload_param": { "device": "none" },
         "contiguous_gradients": true,
-        "stage3_prefetch_bucket_size": 2e7,
-        "stage3_param_persistence_threshold": 1e6,
         "reduce_bucket_size": 5e7,
         "allgather_partitions": true,
         "allgather_bucket_size": 2e7,
@@ -48,12 +44,5 @@
         "partition_activations": true,
         "contiguous_memory_optimization": true,
         "cpu_checkpointing": false
-    },
-    "aio_config": {
-        "block_size": 1048576,
-        "queue_depth": 8,
-        "overlap_events": true,
-        "single_submit": false,
-        "use_gds": false
-  }
+    }
 }

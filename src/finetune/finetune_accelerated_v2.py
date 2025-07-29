@@ -114,6 +114,7 @@ class DataArguments:
 @dataclass
 class CustomTrainingArguments:
     # Basic training arguments
+    deepspeed_config_file: str = field(default="./configs/deepspeed_zero2.json", metadata={"help": "Path to the DeepSpeed Zero-2 configuration file."})
     output_dir: str = field(default="./results", metadata={"help": "Output directory for model predictions and checkpoints."})
     num_train_epochs: float = field(default=3.0, metadata={"help": "Total number of training epochs to perform."})
     per_device_train_batch_size: int = field(default=8, metadata={"help": "Batch size per GPU/TPU core/CPU for training."})
@@ -177,6 +178,86 @@ class CustomTrainingArguments:
         return self.per_device_train_batch_size * self.gradient_accumulation_steps
 
 
+# Replace the accelerator initialization section in your finetune_accelerated_v2.py
+# Around line 551 where the error occurs
+
+def initialize_accelerator_safely(training_args):
+    """
+    Initialize accelerator with proper error handling for SLURM + TorchRun.
+    """
+    import os
+    import time
+    import random
+
+    # Check if we're using torchrun (recommended approach)
+    if "LOCAL_RANK" in os.environ and "RANK" in os.environ:
+        print("🔄 Detected TorchRun environment, using simple accelerator initialization...")
+
+        # Simple initialization that works with torchrun
+        accelerator = Accelerator(
+                # Use the same gradient accumulation steps as specified in training_args
+                deepspeed_plugin={
+                        "deepspeed_config_file": training_args.deepspeed_config_file
+                },
+                gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+                log_with=training_args.report_to if training_args.with_tracking else None,
+                project_dir=training_args.output_dir,
+        )
+        print("✅ TorchRun accelerator initialized successfully")
+        return accelerator
+
+    # Fallback for accelerate launch (with retry logic)
+    max_retries = 5
+    base_delay = 5
+
+    for attempt in range(max_retries):
+        try:
+            print(f"🔄 Initializing Accelerator (attempt {attempt + 1}/{max_retries})...")
+
+            # Add a small random delay to prevent simultaneous initialization
+            if attempt > 0:
+                delay = base_delay + random.uniform(0, 5)
+                print(f"⏳ Waiting {delay:.1f}s before retry...")
+                time.sleep(delay)
+
+            accelerator = Accelerator(
+                    # Use the same gradient accumulation steps as specified in training_args
+                    deepspeed_plugin={
+                            "deepspeed_config_file": training_args.deepspeed_config_file
+                    },
+                    gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+                    log_with=training_args.report_to if training_args.with_tracking else None,
+                    project_dir=training_args.output_dir,
+            )
+
+            print("✅ Accelerator initialized successfully")
+            return accelerator
+
+        except Exception as e:
+            print(f"❌ Attempt {attempt + 1} failed: {e}")
+
+            if "EADDRINUSE" in str(e) or "address already in use" in str(e):
+                print("🔍 Port conflict detected, will retry with delay...")
+                if attempt == max_retries - 1:
+                    print("💡 Try running: pkill -f 'python.*finetune' to clean up any hanging processes")
+                    raise RuntimeError(
+                            "Failed to initialize accelerator after multiple attempts. "
+                            "This is likely due to port conflicts from previous runs. "
+                            "Please check for hanging processes and try again."
+                    )
+            else:
+                # For non-port related errors, fail immediately
+                raise
+
+    raise RuntimeError("Failed to initialize accelerator after all retries")
+
+
+
+# Then in your main() function, replace this line:
+# accelerator = Accelerator(...)
+#
+# With:
+# accelerator = initialize_accelerator_safely(training_args)
 def parse_args_flexible():
     """
     Flexible argument parsing that handles missing arguments gracefully.
@@ -293,13 +374,15 @@ def setup_model_and_config(model_args, training_args, data_args):
     training_args.layer_to_unfreeze = ["lm_head", "multi_modal_projector"]
     print("✅ Base model loaded successfully")
 
+
     # CRITICAL: Configure PEFT/LoRA BEFORE any other operations
     if training_args.lora_enable:
         print("🔄 Applying LoRA configuration...")
 
+
         # Debug: Check model state before LoRA
-        print("📊 Model state BEFORE LoRA:")
-        debug_tensor_shapes(model, "BEFORE_LORA: ")
+        #print("📊 Model state BEFORE LoRA:")
+        #debug_tensor_shapes(model, "BEFORE_LORA: ")
 
         model = configure_model_for_training(
                 model,
@@ -316,8 +399,8 @@ def setup_model_and_config(model_args, training_args, data_args):
         )
 
         # Debug: Check model state after LoRA
-        print("📊 Model state AFTER LoRA:")
-        debug_tensor_shapes(model, "AFTER_LORA: ")
+        #print("📊 Model state AFTER LoRA:")
+        #debug_tensor_shapes(model, "AFTER_LORA: ")
 
         # Verify that we have trainable parameters
         trainable_params = [p for p in model.parameters() if p.requires_grad]
@@ -337,6 +420,7 @@ def setup_model_and_config(model_args, training_args, data_args):
         model.config.hidden_size = 2560
 
     return model
+
 
 
 def create_optimizers_with_parameter_groups(model, training_args, accelerator):
@@ -505,6 +589,7 @@ def main():
         rank0_print(f"model_args = {vars(model_args)}\n")
         rank0_print(f"data_args = {vars(data_args)}\n")
         rank0_print(f"training_args = {vars(training_args)}\n")
+        
 
     # Set seed for reproducibility
     if training_args.seed is not None:
@@ -548,12 +633,14 @@ def main():
 
 
     # Initialize accelerator with proper DeepSpeed configuration
-    accelerator = Accelerator(
-            log_with=training_args.report_to if training_args.with_tracking else None,
-            project_dir=training_args.output_dir,
-            gradient_accumulation_steps=training_args.gradient_accumulation_steps,
-
-    )
+    # accelerator = Accelerator(
+    #         log_with=training_args.report_to if training_args.with_tracking else None,
+    #         project_dir=training_args.output_dir,
+    #         gradient_accumulation_steps=training_args.gradient_accumulation_steps,
+    # 
+    # )
+    accelerator = initialize_accelerator_safely(training_args=training_args)
+    print("✅ Accelerator initialized successfully")
 
     # Calculate training steps
     batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes

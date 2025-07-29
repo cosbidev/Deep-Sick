@@ -12,3 +12,4 @@ module load CUDA/12.1.1
 
 # Activate the virtual environment
 source Deep_Sick_env/bin/activate
+

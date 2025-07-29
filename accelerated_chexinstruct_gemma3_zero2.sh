@@ -2,14 +2,13 @@
 #SBATCH -A NAISS2024-5-577
 #SBATCH -p alvis
 #SBATCH --gpus-per-node=A100:4
-#SBATCH -N 2
+#SBATCH -N 1
 #SBATCH -t 0-00:20:00
 #SBATCH -J "accelerated_chexinstruct_gemma3_1node_z2"
 #SBATCH --error=err_%J.err
 #SBATCH --output=out_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
-
 
 
 

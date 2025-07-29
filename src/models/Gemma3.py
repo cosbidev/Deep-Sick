@@ -11,6 +11,7 @@ import threading
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+
 class GemmaCollator(VisionLanguageDataCollator):
     """
     Data collator ottimizzato per LLaVA models con cache e parallelizzazione

@@ -2,13 +2,14 @@
 #SBATCH -A NAISS2024-5-577
 #SBATCH -p alvis
 #SBATCH --gpus-per-node=A100:4
-#SBATCH -N 2
+#SBATCH -N 1
 #SBATCH -t 0-00:20:00
 #SBATCH -J "accelerated_chexinstruct_gemma3_1node_z3"
 #SBATCH --error=err_%J.err
 #SBATCH --output=out_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
+
 
 
 
@@ -36,7 +37,6 @@ export MASTER_PORT=$((10000 + ($RANDOM % 50000)))
 export MASTER_ADDR=$head_node_ip
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 export GPUS_PER_NODE=4
-
 
 
 # Launch with Accelerate

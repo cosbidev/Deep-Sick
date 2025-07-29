@@ -288,6 +288,7 @@ class BlueprintGroupedSampler(Sampler):
         indices_2img = indices_2img[perm_2]
         indices_1img = indices_1img[perm_1]
 
+
         # Calcola strategia per garantire lo stesso numero di immagini per GPU
         if self.batch_size == 4:
             # Strategia fissa: 3 campioni da 2 img + 1 da 1 img = 7 immagini per GPU

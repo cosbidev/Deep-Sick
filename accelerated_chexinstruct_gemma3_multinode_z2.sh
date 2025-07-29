@@ -1,141 +1,121 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2024-5-577
 #SBATCH -p alvis
-#SBATCH -N 2                              # number of nodes
-#SBATCH --ntasks-per-node=8                # One task per node (let accelerate handle GPU distribution)
-#SBATCH --gpus-per-node=A100:4             # number of GPUs per node
-#SBATCH --cpus-per-task=4                 # More CPUs per task since we have fewer tasks
-#SBATCH -t 0-00:10:00
-#SBATCH -J "accelerated_chexinstruct_gemma3_multinode_z2"
-#SBATCH --error=err_%J.err
-#SBATCH --output=out_%J.out
+#SBATCH -N 2                         # two nodes
+#SBATCH --ntasks-per-node=4          # one task per GPU
+#SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
+#SBATCH --cpus-per-task=4
+#SBATCH -t 0-00:25:00
+#SBATCH -J "gemma3_MN_training_z2"
+#SBATCH --error=training_%J.err
+#SBATCH --output=training_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
 
 
 
-# Enable strict error handling
+
 set -euo pipefail
 
-echo "=== SLURM Job Started ==="
+echo "=== Gemma3 Multi-Node Training (Direct SLURM Method) ==="
 echo "Job ID: $SLURM_JOB_ID"
-echo "Node List: $SLURM_JOB_NODELIST"
-echo "Number of Nodes: $SLURM_NNODES"
-echo "================================="
+echo "Nodes: $SLURM_JOB_NODELIST"
+
+# Setup networking (same as diagnostic)
+MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+MASTER_PORT=$((30000 + RANDOM % 10000))
+
+echo "MASTER_ADDR=$MASTER_ADDR"
+echo "MASTER_PORT=$MASTER_PORT"
+echo "WORLD_SIZE=$SLURM_NTASKS"
 
 
-######################
-### Set environment ###
-######################
-echo "=== Setting up environment ==="
+# Move to project directory
+cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick || { echo "Workspace not found"; exit 1; }
 
-# Move to workspace first
-cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick || {
-    echo "Error: Cannot change to workspace directory"
-    exit 1
-}
-
+# Load environment
 source activateEnv.sh
 echo "✓ Environment activated"
 
-export GPUS_PER_NODE=4
-export WORKSPACE="/mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick"
 
-
-######################
-#### Set network #####
-######################
-echo "=== Setting keep iup network ==="
-
-# Use SLURM job ID to create unique port
-export CUDA_VISIBLE_DEVICES=0,1,2,3
 export WANDB_MODE=online
 
 
-# === Retry automatico sulla porta MASTER ===
-head_node_ip=$(scontrol show hostnames "$SLURM_NODELIST" | head -n 1)
-export MASTER_ADDR=$head_node_ip
-for i in {1..5}; do
-    export MASTER_PORT=$((10000 + RANDOM % 50000))
-    echo "[INFO] Tentativo $i con MASTER_PORT=$MASTER_PORT"
-    (exec 3<>/dev/tcp/$MASTER_ADDR/$MASTER_PORT) &>/dev/null && break || sleep 1
-done
+# NCCL settings (same as diagnostic)
+export NCCL_SOCKET_IFNAME=ib0
+export NCCL_IB_DISABLE=0
+export NCCL_DEBUG=WARN  # Reduce noise
 
-echo "$head_node_ip"
-echo "MASTER_ADDR: $MASTER_ADDR"
-echo "MASTER_PORT: $MASTER_PORT"
-echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
+# Disable distributed debug to reduce noise
+export TORCH_DISTRIBUTED_DEBUG=INFO
 
 ######################
-### Verify setup #####
+### Verify Training Files
 ######################
-echo "=== Verifying setup ==="
-
-# Check required files
-if [ ! -f "src/finetune/finetune_accelerated_v2.py" ]; then
-    echo "✗ Training script not found"
-    exit 1
-fi
-
-if [ ! -f "deepspeed/ds_zero2_config.yaml" ]; then
-    echo "✗ DeepSpeed config not found"
-    exit 1
-fi
+[[ -f src/finetune/finetune_accelerated_v2.py ]] || { echo "Training script missing"; exit 1; }
+[[ -f deepspeed/ds_zero2_config.json ]] || { echo "DeepSpeed config missing"; exit 1; }
 
 
-chmod +x src/finetune/finetune_accelerated_v2.py
+######################
+### Launch Training (EXACT SAME METHOD AS DIAGNOSTIC)
+######################
+
+
+echo "=== Launching Training with Direct SLURM (Working Method) ==="
+# PARAMS for the training script
+export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero2_config.json"
+# Use the EXACT same srun pattern that worked in diagnostics
+
+export OUTPUT_DIR="./reports/finetune_gemma_findings_zero2_trainer_lora64"
 mkdir -p ./reports/finetune_gemma_findings_zero2_trainer_lora64
 
-echo "✓ All checks passed"
-######################
-### Launch training ###
-######################
-echo "=== Launching training ==="
+export BATCH=5  # Adjust batch size as needed
+export EPOCHS=3  # Adjust number of epochs as needed
+export EVAL_STEPS=512  # Adjust evaluation steps as needed
+export GRADIENT_ACCUMULATION_STEPS=8  # Adjust gradient accumulation steps as needed
 
-export NCCL_DEBUG=INFO
-export TORCH_DISTRIBUTED_DEBUG=DETAIL
-export NCCL_SOCKET_IFNAME=^lo,docker
 
-# Use a much simpler approach - let SLURM handle the distribution
-srun accelerate launch \
-    --mixed_precision bf16 \
-    --config_file deepspeed/ds_zero2_config.yaml \
-    --num_processes $((SLURM_NNODES * $GPUS_PER_NODE)) \
-    --num_machines $SLURM_NNODES \
-    --main_process_ip $MASTER_ADDR \
-    --main_process_port $MASTER_PORT \
-    --machine_rank $SLURM_NODEID \
+srun bash -c '
+  export RANK=$SLURM_PROCID
+  export LOCAL_RANK=$SLURM_LOCALID
+  export WORLD_SIZE=$SLURM_NTASKS
+  export MASTER_ADDR='"$MASTER_ADDR"'
+  export MASTER_PORT='"$MASTER_PORT"'
+
+  echo "[Rank $RANK] Starting training on $(hostname) with LOCAL_RANK=$LOCAL_RANK"
+  # Run the training script directly (no accelerate launcher)
     src/finetune/finetune_accelerated_v2.py \
-    --model_name_or_path "google/gemma-3-4b-it" \
-    --dataset_name "chexinstruct" \
-    --dataset_dir "data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings" \
-    --output_dir "./reports/finetune_gemma_findings_zero2_trainer_lora64" \
-    --learning_rate "2e-4" \
-    --per_device_train_batch_size 5 \
-    --per_device_eval_batch_size 5 \
-    --num_train_epochs 3 \
-    --report_to "wandb" \
-    --preprocessing_num_workers 1 \
-    --weight_decay "0.001" \
-    --warmup_ratio "0.01" \
-    --model_max_length 1500 \
-    --lora_enable true \
-    --lora_alpha 64 \
-    --lora_r 64 \
-    --gradient_checkpointing true \
-    --peft_strategy "lora_gaussian" \
-    --gradient_accumulation_steps 8 \
-    --save_strategy "epoch" \
-    --evaluation_strategy "epoch" \
-    --logging_steps 10 \
-    --save_total_limit 3 \
-    --load_best_model_at_end false \
-    --eval_steps 1024 \
-    --metric_for_best_model "eval_loss" \
-    --greater_is_better false \
-    --remove_unused_columns false \
-    --verbose_logging true
-
+        --deepspeed_config_file '"$ACCELERATE_CONFIG_FILE"'
+        --model_name_or_path "google/gemma-3-4b-it" \
+        --dataset_name "chexinstruct" \
+        --dataset_dir "data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings" \
+        --output_dir '"$OUTPUT_DIR"' \
+        --learning_rate 2e-4 \
+        --per_device_train_batch_size '"$BATCH"' \
+        --per_device_eval_batch_size '"$BATCH"' \
+        --num_train_epochs '"$EPOCHS"'\
+        --report_to wandb \
+        --preprocessing_num_workers 1 \
+        --weight_decay 0.0001 \
+        --warmup_ratio 0.03 \
+        --model_max_length 1500 \
+        --lora_enable true \
+        --lora_alpha 64 \
+        --lora_r 64 \
+        --gradient_checkpointing true \
+        --peft_strategy "lora_gaussian" \
+        --gradient_accumulation_steps '"$GRADIENT_ACCUMULATION_STEPS"' \
+        --save_strategy "epoch" \
+        --evaluation_strategy "epoch" \
+        --logging_steps 10 \
+        --save_total_limit 3 \
+        --load_best_model_at_end false \
+        --eval_steps '"$EVAL_STEPS"' \
+        --metric_for_best_model "eval_loss" \
+        --greater_is_better false \
+        --remove_unused_columns false \
+        --verbose_logging true
+'
 
 exit_code=$?
 echo "Training completed with exit code: $exit_code"
