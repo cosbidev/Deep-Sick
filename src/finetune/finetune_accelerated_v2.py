@@ -29,6 +29,8 @@ from transformers import get_scheduler
 # Suppress warnings
 warnings.filterwarnings("ignore")
 
+import sys
+sys.path.extend(["./src", './'])
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
 from util_finetune import rank0_print, BlueprintGroupedSampler, evaluate
@@ -195,10 +197,6 @@ def initialize_accelerator_safely(training_args):
 
         # Simple initialization that works with torchrun
         accelerator = Accelerator(
-                # Use the same gradient accumulation steps as specified in training_args
-                deepspeed_plugin={
-                        "deepspeed_config_file": training_args.deepspeed_config_file
-                },
                 gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                 log_with=training_args.report_to if training_args.with_tracking else None,
                 project_dir=training_args.output_dir,
@@ -221,10 +219,6 @@ def initialize_accelerator_safely(training_args):
                 time.sleep(delay)
 
             accelerator = Accelerator(
-                    # Use the same gradient accumulation steps as specified in training_args
-                    deepspeed_plugin={
-                            "deepspeed_config_file": training_args.deepspeed_config_file
-                    },
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                     log_with=training_args.report_to if training_args.with_tracking else None,
                     project_dir=training_args.output_dir,

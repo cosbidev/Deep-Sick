@@ -3,6 +3,7 @@ deepspeed_config:
   deepspeed_config_file: ./deepspeed/ds_2_config_bf16.json
   zero3_init_flag: true
 distributed_type: DEEPSPEED
+downcast_bf16: 'no'
 enable_cpu_affinity: false
 mixed_precision: bf16
 main_process_ip: null

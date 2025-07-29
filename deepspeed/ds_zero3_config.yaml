@@ -3,6 +3,7 @@ deepspeed_config:
  deepspeed_config_file: ./deepspeed/ds_3_config_bf16.json
  zero2_init_flag: true
 distributed_type: DEEPSPEED
+downcast_bf16: 'no'
 enable_cpu_affinity: false
 mixed_precision: bf16
 main_process_ip: null
@@ -14,5 +15,6 @@ tpu_env: []
 tpu_use_cluster: false
 tpu_use_sudo: false
 use_cpu: false
+
 
 

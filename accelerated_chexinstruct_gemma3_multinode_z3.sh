@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2024-5-577
 #SBATCH -p alvis
-#SBATCH -N 2                         # two nodes
+#SBATCH -N 4                         # two nodes
 #SBATCH --ntasks-per-node=4          # one task per GPU
 #SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
 #SBATCH --cpus-per-task=4
-#SBATCH -t 0-00:25:00
+#SBATCH -t 1-12:00:00
 #SBATCH -J "gemma3_MN_training_z3"
 #SBATCH --error=training_%J.err
 #SBATCH --output=training_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
-
-
 
 set -euo pipefail
 
@@ -52,27 +50,23 @@ export TORCH_DISTRIBUTED_DEBUG=INFO
 ### Verify Training Files
 ######################
 [[ -f src/finetune/finetune_accelerated_v2.py ]] || { echo "Training script missing"; exit 1; }
-[[ -f deepspeed/ds_zero3_config.json ]] || { echo "DeepSpeed config missing"; exit 1; }
-
+[[ -f deepspeed/ds_zero3_config.yaml ]] || { echo "DeepSpeed config missing"; exit 1; }
 
 ######################
 ### Launch Training (EXACT SAME METHOD AS DIAGNOSTIC)
 ######################
 
-
 echo "=== Launching Training with Direct SLURM (Working Method) ==="
 # PARAMS for the training script
-export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero3_config.json"
+export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero3_config.yaml"
 # Use the EXACT same srun pattern that worked in diagnostics
 
 export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64"
 mkdir -p ./reports/finetune_gemma_findings_zero3_trainer_lora64
-
-export BATCH=5  # Adjust batch size as needed
+export BATCH=4  # Adjust batch size as needed
 export EPOCHS=3  # Adjust number of epochs as needed
-export EVAL_STEPS=512  # Adjust evaluation steps as needed
-export GRADIENT_ACCUMULATION_STEPS=8  # Adjust gradient accumulation steps as needed
-
+export EVAL_STEPS=128  # Adjust evaluation steps as needed
+export GRADIENT_ACCUMULATION_STEPS=4  # Adjust gradient accumulation steps as needed
 
 srun bash -c '
   export RANK=$SLURM_PROCID
@@ -84,7 +78,7 @@ srun bash -c '
   echo "[Rank $RANK] Starting training on $(hostname) with LOCAL_RANK=$LOCAL_RANK"
   # Run the training script directly (no accelerate launcher)
     src/finetune/finetune_accelerated_v2.py \
-        --deepspeed_config_file '"$ACCELERATE_CONFIG_FILE"'
+        --deepspeed_config_file '"$ACCELERATE_CONFIG_FILE"' \
         --model_name_or_path "google/gemma-3-4b-it" \
         --dataset_name "chexinstruct" \
         --dataset_dir "data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings" \
@@ -96,7 +90,7 @@ srun bash -c '
         --report_to wandb \
         --preprocessing_num_workers 1 \
         --weight_decay 0.0001 \
-        --warmup_ratio 0.03 \
+        --warmup_ratio 0.04 \
         --model_max_length 1500 \
         --lora_enable true \
         --lora_alpha 64 \
@@ -106,7 +100,7 @@ srun bash -c '
         --gradient_accumulation_steps '"$GRADIENT_ACCUMULATION_STEPS"' \
         --save_strategy "epoch" \
         --evaluation_strategy "epoch" \
-        --logging_steps 10 \
+        --logging_steps 5 \
         --save_total_limit 3 \
         --load_best_model_at_end false \
         --eval_steps '"$EVAL_STEPS"' \
