@@ -4,15 +4,23 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 2.5 ] MAJOR REVIEW, same memory space but doubled the size of the batch.  &#10;- Gradient Checkpointing issues solved (accelerate)&#10;- Some bugs related to unstability of the gradient calculations!&#10;- zero2 is the most stable solution (for now)">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="e47e4579-aa9c-4f0f-853c-ace0590e0c02" name="Changes" comment="[Fine-tune-accelerated 2.5 ]">
+      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode_z2.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode_z3.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/deepspeed/ds_multi_node.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BASH_DS.sh" beforeDir="false" afterPath="$PROJECT_DIR$/bash/common/BASH_DS.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/llava_trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/LLaVA-NeXT/llava/train/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_multinode.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_z2.sh" beforeDir="false" afterPath="$PROJECT_DIR$/bash/debug/accelerated_chexinstruct_gemma3_old .sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero2.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero2.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero3.sh" beforeDir="false" afterPath="$PROJECT_DIR$/accelerated_chexinstruct_gemma3_zero3.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_multi_node.sh" beforeDir="false" afterPath="$PROJECT_DIR$/bash/debug/debug_multi_node.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_2_config_bf16.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" beforeDir="false" afterPath="$PROJECT_DIR$/deepspeed/ds_3_config_bf16.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/finetune/finetune_accelerated_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/finetune_accelerated_v2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/finetune/util_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune/util_finetune.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/models/Gemma3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/models/Gemma3.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -92,6 +100,7 @@
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.fonts.default&quot;,
+    &quot;two.files.diff.last.used.file&quot;: &quot;/Users/filruff/Desktop/PHD/PROGETTI/Deep-Sick/accelerated_chexinstruct_gemma3_multinode_z2.sh&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -104,11 +113,11 @@
       <recent name="$PROJECT_DIR$/src/train" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/bash/common" />
+      <recent name="$PROJECT_DIR$/bash/debug" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src/dataset" />
       <recent name="$PROJECT_DIR$/src/dataset/chexinstruct" />
-      <recent name="$PROJECT_DIR$/src/finetune/Tutorials" />
-      <recent name="$PROJECT_DIR$/src/train/RRG" />
     </key>
   </component>
   <component name="RunAnythingCache">
@@ -566,6 +575,9 @@
       <workItem from="1752916678990" duration="606000" />
       <workItem from="1753176341061" duration="16830000" />
       <workItem from="1753257759223" duration="25430000" />
+      <workItem from="1753731257839" duration="4451000" />
+      <workItem from="1753735927666" duration="5365000" />
+      <workItem from="1753771447354" duration="6695000" />
     </task>
     <task id="LOCAL-00001" summary="DATASET TRACKING Update, all the progress about the dataset creation and replication.">
       <option name="closed" value="true" />

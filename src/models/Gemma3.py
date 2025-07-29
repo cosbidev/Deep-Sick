@@ -206,7 +206,9 @@ class GemmaCollator(VisionLanguageDataCollator):
         # Use the lenght_checker to filter out empty image groups
         index_to_keep = [l>0 for i, l in enumerate(lenght_checker)]
 
-
+        if not all(index_to_keep):
+            # Log warning if any image group is empty
+            print(f"[WARNING] Some image groups are empty. Keeping only valid ones: {index_to_keep}")
         # Processa messaggi
         messages = examples.get('messages')
         b_size = len(messages)
@@ -275,7 +277,18 @@ class GemmaCollator(VisionLanguageDataCollator):
         text_prompt = [el.get('texts', None) for el in batch]
         formatted_messages = [el.get('formatted_messages', None) for el in batch]
 
+
+
         images = process_vision_info(formatted_messages)
+
+        # Filtro immagini vuote
+        if not all([len(im) != 0 for im in images]):
+            # Filter out empty image groups and corresponding text prompts
+            boolean_ix = [len(im) > 0 for im in images]
+
+            text_prompt = [text for text, valid in zip(text_prompt, boolean_ix) if valid]
+            images = [im for im, valid in zip(images, boolean_ix) if valid]
+
 
         # Tokenize the texts and process the images
         batch = self.processor(

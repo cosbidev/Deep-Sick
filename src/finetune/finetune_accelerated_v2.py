@@ -63,6 +63,7 @@ class ModelArguments:
             metadata={"help": 'Could be "mm_mlp_adapter", "mm_vision_resampler", "mm_vision_tower,mm_mlp_adapter,mm_language_model", etc.'}
     )
     freeze_backbone: bool = field(default=False)
+
     mm_projector_type: Optional[str] = field(default="linear")
     mm_use_im_start_end: bool = field(default=False)
     mm_use_im_patch_token: bool = field(default=True)
@@ -76,9 +77,8 @@ class ModelArguments:
     use_pos_skipping: Optional[bool] = field(default=False)
     pos_skipping_range: Optional[int] = field(default=2048)
     mm_newline_position: Optional[str] = field(default="grid")
-    delay_load: Optional[bool] = field(default=True)
-    add_faster_video: Optional[bool] = field(default=False)
-    faster_token_stride: Optional[int] = field(default=10)
+
+
 
 
 @dataclass
@@ -513,10 +513,10 @@ def main():
     # Load datasets
     print("🔄 Loading datasets...")
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
-    if training_args.debug:
-        # Reduce dataset size for debugging purposes
-        train_dataset = train_dataset.select(range(1000))
-        eval_dataset = eval_dataset.select(range(1000))
+    # if training_args.debug:
+    #     # Reduce dataset size for debugging purposes
+    #     train_dataset = train_dataset.select(range(1000))
+    #     eval_dataset = eval_dataset.select(range(1000))
 
 
     print("✅ Datasets loaded successfully")
@@ -583,15 +583,13 @@ def main():
         #         n_images=eval_dataset["n_of_images"],
         # )
 
-
         train_dataloader = DataLoader(
                 train_dataset,
                 sampler=sampler_train,
                 collate_fn=collator,
                 drop_last=True,
                 batch_size=training_args.per_device_train_batch_size,
-                pin_memory=True,
-                num_workers=0,  # Disable multiprocessing to avoid issues
+                pin_memory=True
         )
         eval_dataloader = DataLoader(
                 eval_dataset,
@@ -600,13 +598,11 @@ def main():
                 drop_last=True,
                 pin_memory=True,
                 batch_size=training_args.per_device_eval_batch_size,
-                num_workers=0,
         )
         print("✅ Data loaders created successfully")
     except Exception as e:
         logger.error(f"❌ Error creating data loaders: {e}")
         raise
-
 
 
     # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
@@ -666,10 +662,37 @@ def main():
         raise
     # === LoRA + Gradient Checkpointing Safe Enable ===
 
+    if training_args.debug:
+        # Debugging: Check if the dataloaders are correctly set up
+        for i, b in tqdm(enumerate(train_dataloader), desc="Checking train dataloader batches", total=len(train_dataloader)):
+            assert 'pixel_values' in b, f"Batch {i} does not contain 'pixel_values' key. Available keys: {b.keys()}"
+            # Debug: Check tensor shapes in the first batch
+            if i == 0:
+                print("🔄 Checking tensor shapes in the first batch:")
+                for key, value in b.items():
+                    if isinstance(value, torch.Tensor):
+                        print(f"   {key}: {value.shape} on device {value.device}")
+                    else:
+                        print(f"   {key}: {type(value)} (not a tensor)")
+
+        for i, b in tqdm(enumerate(eval_dataloader), desc="Checking eval dataloader batches", total=len(eval_dataloader)):
+            assert 'pixel_values' in b, f"Batch {i} does not contain 'pixel_values' key. Available keys: {b.keys()}"
+            # Debug: Check tensor shapes in the first batch
+            if i == 0:
+                print("🔄 Checking tensor shapes in the first eval batch:")
+                for key, value in b.items():
+                    if isinstance(value, torch.Tensor):
+                        print(f"   {key}: {value.shape} on device {value.device}")
+                    else:
+                        print(f"   {key}: {type(value)} (not a tensor)")
+
+
+
     # Initialize W&B run name
-    if training_args.report_to == "wandb":
+    if training_args.report_to == "wandb" and accelerator.is_local_main_process:
         run_name = f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}'
         os.environ["WANDB_PROJECT"] = run_name
+
 
     # Progress bar setup
     progress_bar = tqdm(range(training_args.max_train_steps), disable=not accelerator.is_local_main_process)

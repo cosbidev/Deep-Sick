@@ -67,7 +67,7 @@ if [ ! -f "src/finetune/finetune_accelerated.py" ]; then
     exit 1
 fi
 
-if [ ! -f "deepspeed/ds_zero3_config_MultiNodes.yaml" ]; then
+if [ ! -f "deepspeed/ds_multi_node.yaml" ]; then
     echo "✗ DeepSpeed config not found"
     exit 1
 fi
@@ -82,14 +82,15 @@ echo "✓ All checks passed"
 ######################
 echo "=== Launching training ==="
 
+
 # Use a much simpler approach - let SLURM handle the distribution
 srun accelerate launch \
-    --config_file deepspeed/ds_zero3_config_MultiNodes.yaml \
+    --config_file deepspeed/ds_multi_node.yaml \
     --num_processes $((SLURM_NNODES * GPUS_PER_NODE)) \
     --num_machines $SLURM_NNODES \
     --main_process_ip $MASTER_ADDR \
     --main_process_port $MASTER_PORT \
-    --machine_rank $SLURM_PROCID \
+    --machine_rank $SLURM_NODEID \
     src/finetune/finetune_accelerated.py \
     --model_name_or_path google/gemma-3-4b-it \
     --dataset_dir data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings \
@@ -107,3 +108,4 @@ srun accelerate launch \
 exit_code=$?
 echo "Training completed with exit code: $exit_code"
 exit $exit_code
+

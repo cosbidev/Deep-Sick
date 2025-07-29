@@ -36,8 +36,7 @@
     "stage3_gather_16bit_weights_on_model_save": true,
     "reduce_bucket_size": 5e7,
     "stage3_prefetch_bucket_size": 2e7,
-    "stage3_param_persistence_threshold": 1e6,
-    "partition_activations": true
+    "stage3_param_persistence_threshold": 1e6
     },
 
     "gradient_accumulation_steps": "auto",
@@ -61,5 +60,3 @@
 
 }
 }
-
-
