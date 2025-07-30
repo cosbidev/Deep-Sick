@@ -90,6 +90,7 @@ srun bash -c '
         --dataset_dir "data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings" \
         --output_dir '"$OUTPUT_DIR"' \
         --learning_rate 2e-4 \
+        --lr_scheduler_type "cosine_with_restarts" \
         --per_device_train_batch_size '"$BATCH"' \
         --per_device_eval_batch_size '"$BATCH"' \
         --num_train_epochs '"$EPOCHS"'\
@@ -104,16 +105,11 @@ srun bash -c '
         --gradient_checkpointing true \
         --peft_strategy "lora_gaussian" \
         --gradient_accumulation_steps '"$GRADIENT_ACCUMULATION_STEPS"' \
-        --save_strategy "epoch" \
-        --evaluation_strategy "epoch" \
-        --logging_steps 10 \
-        --save_total_limit 3 \
-        --load_best_model_at_end false \
         --eval_steps '"$EVAL_STEPS"' \
-        --metric_for_best_model "eval_loss" \
-        --greater_is_better false \
-        --remove_unused_columns false \
-        --verbose_logging true
+        --checkpointing_strategy epoch \
+        --checkpointing_divider 1 \
+        --load_best_model true \
+        --verbose_logging true \
 '
 
 exit_code=$?

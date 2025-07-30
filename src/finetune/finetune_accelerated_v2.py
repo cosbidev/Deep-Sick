@@ -8,6 +8,7 @@ This version addresses the "torch.cat(): expected a non-empty list of Tensors" e
 import math
 import warnings
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional, Any, Callable
 from tqdm import tqdm
 import os
@@ -143,14 +144,24 @@ class CustomTrainingArguments:
 
     # Training configuration
     max_train_steps: Optional[int] = field(default=None, metadata={"help": "Total number of training steps to perform. If provided, overrides num_train_epochs."})
-    num_warmup_steps: int = field(
-            default=1000,
-            metadata={"help": "Number of warmup steps for the learning rate scheduler."}
-    )
-    lr_scheduler_type: str = field(default="linear", metadata={"help": "The scheduler type to use."})
+
+
+
+    # Scheduler configuration
+    lr_scheduler_type: str = field(default="linear", metadata={"help": "The scheduler type to use. Options: linear, cosine, cosine_with_restarts, polynomial, constant, constant_with_warmup, or cyclic."})
+    warmup_min_lr: float = field(default=0.0, metadata={"help": "Warmup minimum learning rate."})
+    num_warmup_steps: int = field(default=None, metadata={"help": "Number of warmup steps for the learning rate scheduler."})
+    cycle_min_lr: float = field(default=1e-7, metadata={"help": "Minimum learning rate for cyclical learning rate scheduler."})
+    total_num_steps: Optional[int] = field( default=None, metadata={"help": "Total number of steps for the learning rate scheduler."})
+    warmup_ratio: float = field(default=0.01, metadata={"help": "Warmup ratio for the learning rate scheduler."})
+
+    # Optimizer configuration
+    adam_beta1: float = field(default=0.9, metadata={"help": "Beta1 for AdamW optimizer."})
+    adam_beta2: float = field(default=0.99, metadata={"help": "Beta2 for AdamW optimizer."})
+    adam_epsilon: float = field(default=1e-8, metadata={"help": "Epsilon for AdamW optimizer."})
+
 
     # Multimodal training configuration
-    freeze_multimodal: bool = field(default=True, metadata={"help": "Whether to freeze the multimodal model."})
     finetune_vision_layers: bool = field(default=False, metadata={"help": "Whether to finetune the vision layers."})
     finetune_language_layers: bool = field(default=True, metadata={"help": "Whether to finetune the language layers."})
     finetune_attention_modules: bool = field(default=True, metadata={"help": "Whether to finetune the attention modules."})
@@ -161,19 +172,19 @@ class CustomTrainingArguments:
     gradient_accumulation_steps: int = field(default=1, metadata={"help": "Number of updates steps to accumulate before performing a backward/update pass."})
 
     # Checkpointing and saving
-    checkpointing_steps: Optional[str] = field(default='none', metadata={"help": "Checkpointing steps, can be 'epoch', 'steps', or a number of steps."})
-    save_every_n_epochs: Optional[int] = field(default=None, metadata={"help": "Save every n epochs."})
+    checkpointing_strategy: Optional[str] = field(default='epoch', metadata={"help": "Checkpointing steps, can be 'epoch', 'steps', or a number of steps."})
+    checkpointing_divider: Optional[int] = field(default=1, metadata={"help": "Checkpointing steps, can be 'epoch', 'steps', or a number of steps."})
     resume_from_checkpoint: Optional[str] = field(default=None, metadata={"help": "Path to checkpoint to resume from."})
 
-
     # Evaluation and best model
-    load_best_model: bool = field(default=False, metadata={"help": "Whether to load the best model at the end of training."})
+    load_best_model: bool = field(default=True, metadata={"help": "Whether to load the best model at the end of training."})
     eval_steps: int = field(default=None, metadata={"help": "Evaluate every n steps."})
     # W&B integration
     report_to: str = field(default="wandb")
     with_tracking: bool = field(default=True, metadata={"help": "Whether to use tracking for the training run."})
     lr: float = field(default=2e-4, metadata={"help": "Learning rate for the optimizer."})
     debug: bool = field(default=False, metadata={"help": "Whether to run in debug mode with fewer epochs and smaller batch size."})
+
     @property
     def train_batch_size(self) -> int:
         """Total effective batch size for training."""
@@ -200,6 +211,7 @@ def initialize_accelerator_safely(training_args):
                 gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                 log_with=training_args.report_to if training_args.with_tracking else None,
                 project_dir=training_args.output_dir,
+
         )
         print("✅ TorchRun accelerator initialized successfully")
         return accelerator
@@ -403,9 +415,9 @@ def setup_model_and_config(model_args, training_args, data_args):
 
         print(f"✅ LoRA applied successfully with {len(trainable_params)} trainable parameter groups")
 
-    # Disable gradient checkpointing to avoid conflicts with DeepSpeed
-    if hasattr(model, 'gradient_checkpointing_enable'):
-        model.gradient_checkpointing_disable()
+    # # Disable gradient checkpointing to avoid conflicts with DeepSpeed
+    # if hasattr(model, 'gradient_checkpointing_enable'):
+    #     model.gradient_checkpointing_disable()
 
     # Set hidden size for compatibility
     try:
@@ -490,7 +502,6 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
     print(f"📊 Created {len(optimizer_grouped_parameters)} parameter groups with {total_params_in_groups} total parameters")
 
 
-
     optimizer_cls = (
             torch.optim.AdamW
             if accelerator.state.deepspeed_plugin is None
@@ -499,10 +510,11 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
     )
     optimizer = optimizer_cls(optimizer_grouped_parameters,
                               lr=training_args.learning_rate,
-                              eps=1e-8,
-                              betas=(0.9, 0.999))
+                              eps=training_args.adam_epsilon,
+                              betas=(training_args.adam_beta1, training_args.adam_beta2))
 
     # Create learning rate scheduler
+
     if (
             accelerator.state.deepspeed_plugin is None
             or "scheduler" not in accelerator.state.deepspeed_plugin.deepspeed_config
@@ -512,6 +524,8 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
                 optimizer=optimizer,
                 num_warmup_steps=training_args.num_warmup_steps,
                 num_training_steps=training_args.max_train_steps,
+                scheduler_specific_kwargs = dict(num_cycles=3 ) #lr_decay=0.7
+
         )
     else:
         lr_scheduler = DummyScheduler(
@@ -535,9 +549,6 @@ def call_forward_dummy(dummy_inputs, model, device="cuda"):
     out = model(**dummy)
     loss = out.loss
     return loss
-
-
-
 
 def training_step(
         model: torch.nn.Module,
@@ -583,7 +594,7 @@ def main():
         rank0_print(f"model_args = {vars(model_args)}\n")
         rank0_print(f"data_args = {vars(data_args)}\n")
         rank0_print(f"training_args = {vars(training_args)}\n")
-        
+
 
     # Set seed for reproducibility
     if training_args.seed is not None:
@@ -592,10 +603,10 @@ def main():
     # Load datasets
     print("🔄 Loading datasets...")
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
-    # if training_args.debug:
-    #     # Reduce dataset size for debugging purposes
-    #     train_dataset = train_dataset.select(range(1000))
-    #     eval_dataset = eval_dataset.select(range(1000))
+    if training_args.debug:
+        # Reduce dataset size for debugging purposes
+        train_dataset = train_dataset.select(range(32))
+        eval_dataset = eval_dataset.select(range(16))
 
 
     print("✅ Datasets loaded successfully")
@@ -607,8 +618,6 @@ def main():
             training_args=training_args,
             data_args=data_args
     )
-
-
 
     print("✅ Model and LoRA setup completed")
     # Get collator and tokenizer
@@ -623,20 +632,13 @@ def main():
     print("✅ Collator setup completed")
 
     # NOW initialize accelerator with DeepSpeed config
-    print("🔄 Initializing Accelerator with DeepSpeed...")
-
-
-    # Initialize accelerator with proper DeepSpeed configuration
-    # accelerator = Accelerator(
-    #         log_with=training_args.report_to if training_args.with_tracking else None,
-    #         project_dir=training_args.output_dir,
-    #         gradient_accumulation_steps=training_args.gradient_accumulation_steps,
-    # 
-    # )
     accelerator = initialize_accelerator_safely(training_args=training_args)
     print("✅ Accelerator initialized successfully")
 
     # Calculate training steps
+    if accelerator.num_processes == 0:
+        raise RuntimeError("❌ No processes found. Please ensure you are running with multiple GPUs or in a distributed environment.")
+    print(f"🔄 Accelerator initialized with {accelerator.num_processes} processes")
     batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes
     num_update_steps_per_epoch = math.ceil(len(train_dataset) / (batch_size_real * training_args.gradient_accumulation_steps))
     if training_args.max_train_steps is None:
@@ -644,6 +646,11 @@ def main():
     else:
         training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
 
+
+    if training_args.num_warmup_steps is None and training_args.warmup_ratio is not None:
+        training_args.num_warmup_steps = int(training_args.warmup_ratio * num_update_steps_per_epoch)
+    else:
+        training_args.num_warmup_steps = int(num_update_steps_per_epoch * 0.01) # Default 1% warmup if not specified
 
     if not training_args.eval_steps:
         training_args.eval_steps = int(num_update_steps_per_epoch / 2)
@@ -685,36 +692,26 @@ def main():
         logger.error(f"❌ Error creating data loaders: {e}")
         raise
 
-
     # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
-    print("🔄 Creating optimizer...")
     optimizer, lr_scheduler = create_optimizers_with_parameter_groups(model, training_args, accelerator)
     print("✅ Optimizer created successfully")
-
 
     # Initialize tracking if enabled
     if training_args.with_tracking:
         accelerator.init_trackers(
                 project_name=f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}',
         )
-
     print("✅ Accelerator initialized successfully")
-
     # Final parameter check before prepare
     print("📊 Final parameter check before accelerator.prepare():")
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     print(f"   Trainable parameters: {len(trainable_params)}")
 
     # # Verify optimizer has parameters
-    # total_optimizer_params = sum(len(group['params']) for group in optimizer.param_groups)
-    # print(f"   Optimizer parameter count: {total_optimizer_params}")
-    #
-    # if total_optimizer_params == 0:
-    #     raise RuntimeError("❌ Optimizer has no parameters!")
-    # CRITICAL: Prepare everything with accelerator in the correct order
     print("🔄 Preparing model, optimizer, and data loaders with accelerator...")
 
     try:
+        print("🔄 Enabling gradient checkpointing if supported by the model...")
         hasattr(model, 'gradient_checkpointing_enable')
         model.config.use_cache = False
         model.gradient_checkpointing_enable(dict(use_reentrant=False))
@@ -723,6 +720,7 @@ def main():
         logger.warning("This might be due to model not supporting gradient checkpointing or already enabled.")
         # Continue without enabling gradient checkpointing if it fails
     try:
+
         # Prepare in the correct order: model first, then optimizer, then data loaders
         model, optimizer, lr_scheduler, train_dataloader, eval_dataloader = accelerator.prepare(
                 model,
@@ -731,18 +729,14 @@ def main():
                 train_dataloader,
                 eval_dataloader,
         )
-
-        # Uso:
-        loss = call_forward_dummy(model.module.dummy_inputs, model)
-        print("LOSS GRADIENT:", loss.requires_grad)
-
         print("✅ All components prepared successfully with accelerator")
+
     except Exception as e:
         logger.error(f"❌ Error during accelerator.prepare(): {e}")
         logger.error("This is likely due to empty parameter groups or incompatible configurations")
         raise
-    # === LoRA + Gradient Checkpointing Safe Enable ===
 
+    # === LoRA + Gradient Checkpointing Safe Enable ===
     if training_args.debug:
         # Debugging: Check if the dataloaders are correctly set up
         for i, b in tqdm(enumerate(train_dataloader), desc="Checking train dataloader batches", total=len(train_dataloader)):
@@ -768,11 +762,13 @@ def main():
                         print(f"   {key}: {type(value)} (not a tensor)")
 
 
-
     # Initialize W&B run name
     if training_args.report_to == "wandb" and accelerator.is_local_main_process:
-        run_name = f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}'
-        os.environ["WANDB_PROJECT"] = run_name
+        project_name = f'{model_args.model_name_or_path.split("/")[-1]}-FT'
+        run_name = f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}-date-{datetime.now().strftime("%Y-%m-%d")}-epoch-{training_args.num_train_epochs}-bs-{training_args.per_device_train_batch_size}'
+        os.environ["WANDB_PROJECT"] = project_name  # project in W&B UI
+        os.environ["WANDB_RUN_NAME"] = run_name  # run name in W&B UI
+        os.environ["WANDB_NAME"] = run_name  # alternative alias for run name
 
 
     # Progress bar setup
@@ -808,6 +804,7 @@ def main():
             starting_epoch = resume_step // num_update_steps_per_epoch
             resume_step -= starting_epoch * num_update_steps_per_epoch
             completed_steps = resume_step
+
 
     progress_bar.update(completed_steps)
     # Training loop
@@ -848,6 +845,8 @@ def main():
                 if training_args.with_tracking:
                     log_data = {
                             "train/loss": loss.item(),
+                            "epoch"     : epoch,
+                            "step"      : completed_steps,
                     }
                     if lr_scheduler is not None:
                         log_data["train/lr"] = lr_scheduler.get_last_lr()[0]
@@ -860,10 +859,12 @@ def main():
                     total_loss += step_loss
 
             # Checkpointing every N steps
-            if isinstance(training_args.checkpointing_steps, int):
-                if completed_steps % training_args.checkpointing_steps == 0:
+            if training_args.checkpointing_strategy == 'steps' and training_args.checkpointing_divider is not None:
+                if completed_steps % training_args.checkpointing_divider == 0 and completed_steps > 0:
                     output_dir = os.path.join(training_args.output_dir, f"step_{completed_steps}")
                     accelerator.save_state(output_dir)
+
+
 
             if completed_steps >= training_args.max_train_steps:
                 break
@@ -871,10 +872,26 @@ def main():
                 # Evaluation
                 try:
                     perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+                    if training_args.with_tracking:
+                        accelerator.log({
+                                "perplexity": perplexity,
+                                "eval_loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
+                                "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
+                                "epoch"     : epoch,
+                                "step"      : completed_steps,
+                        }, step=completed_steps)
+
+                    # Save best model also during steps evaluation
+                    if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
+                        best_metric = perplexity
+                        best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
+                        accelerator.save_state(best_metric_checkpoint)
+                        accelerator.print(f"New best metric: {best_metric} at epoch {epoch} and step {completed_steps}")
+                        accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
                 except Exception as e:
-                    logger.warning(f"Evaluation failed: {e}")
                     perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
-                accelerator.log({"perplexity": perplexity, "eval_loss": eval_loss}, step=completed_steps)
+                    logger.warning(f"Evaluation failed: {e} !")
+
 
         try:
             perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
@@ -891,15 +908,19 @@ def main():
                     "step"      : completed_steps,
             }, step=completed_steps)
 
+
         # Epoch-level checkpointing
-        if training_args.save_every_n_epochs is not None:
-            if (epoch + 1) % training_args.save_every_n_epochs == 0:
+        if training_args.checkpointing_strategy == 'epoch' and isinstance(training_args.checkpointing_divider, int):
+            if (epoch + 1) % training_args.checkpointing_divider == 0 and epoch > 0:
                 save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch}")
                 accelerator.save_state(save_path)
                 accelerator.print(f"Saved checkpoint every_n_epochs at: {save_path}")
-
-        if isinstance(training_args.checkpointing_steps, str) and training_args.checkpointing_steps == "epoch":
+        elif training_args.checkpointing_strategy == 'epoch'  and training_args.checkpointing_divider is None:
+            accelerator.print(f"Saving checkpoint each epoch {epoch}")
             accelerator.save_state(os.path.join(training_args.output_dir, f"epoch_{epoch}"))
+
+
+
         # Save best model
         if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
             best_metric = perplexity
@@ -907,6 +928,10 @@ def main():
             accelerator.save_state(best_metric_checkpoint)
             accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
             accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
+
+
+
+
     # Reload best checkpoint
     if training_args.load_best_model and best_metric_checkpoint:
         accelerator.load_state(best_metric_checkpoint)
@@ -955,7 +980,6 @@ def main():
 
     print("🎉 Training completed successfully!")
     logger.info("|/| May the force be with you! Training completed successfully.")
-
 
 if __name__ == "__main__":
     main()

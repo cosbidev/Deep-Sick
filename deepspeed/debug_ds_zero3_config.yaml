@@ -1,0 +1,19 @@
+compute_environment: LOCAL_MACHINE
+deepspeed_config:
+  deepspeed_config_file: ./deepspeed/ds_3_config.json
+distributed_type: DEEPSPEED
+num_processes: 2
+num_machines: 1
+downcast_bf16: 'no'
+enable_cpu_affinity: false
+mixed_precision: bf16
+main_process_ip: null
+main_process_port: null
+main_training_function: main
+rdzv_backend: static
+same_network: true
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false
+use_cpu: false
+
