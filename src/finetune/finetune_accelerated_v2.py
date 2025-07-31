@@ -144,7 +144,7 @@ class CustomTrainingArguments:
 
     # Training configuration
     max_train_steps: Optional[int] = field(default=None, metadata={"help": "Total number of training steps to perform. If provided, overrides num_train_epochs."})
-
+    bf16: bool = field(default=False, metadata={"help": "Whether to use bfloat16 mixed precision."})
 
 
     # Scheduler configuration
@@ -211,6 +211,7 @@ def initialize_accelerator_safely(training_args):
                 gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                 log_with=training_args.report_to if training_args.with_tracking else None,
                 project_dir=training_args.output_dir,
+                mixed_precision="bf16" if training_args.bf16 else "fp16"
 
         )
         print("✅ TorchRun accelerator initialized successfully")
@@ -234,6 +235,7 @@ def initialize_accelerator_safely(training_args):
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                     log_with=training_args.report_to if training_args.with_tracking else None,
                     project_dir=training_args.output_dir,
+                    mixed_precision="bf16" if training_args.bf16 else "fp16"
             )
 
             print("✅ Accelerator initialized successfully")
@@ -639,21 +641,6 @@ def main():
     if accelerator.num_processes == 0:
         raise RuntimeError("❌ No processes found. Please ensure you are running with multiple GPUs or in a distributed environment.")
     print(f"🔄 Accelerator initialized with {accelerator.num_processes} processes")
-    batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes
-    num_update_steps_per_epoch = math.ceil(len(train_dataset) / (batch_size_real * training_args.gradient_accumulation_steps))
-    if training_args.max_train_steps is None:
-        training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
-    else:
-        training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
-
-
-    if training_args.num_warmup_steps is None and training_args.warmup_ratio is not None:
-        training_args.num_warmup_steps = int(training_args.warmup_ratio * num_update_steps_per_epoch)
-    else:
-        training_args.num_warmup_steps = int(num_update_steps_per_epoch * 0.01) # Default 1% warmup if not specified
-
-    if not training_args.eval_steps:
-        training_args.eval_steps = int(num_update_steps_per_epoch / 2)
     # Create data loaders BEFORE accelerator initialization
     print("🔄 Creating data loaders...")
     try:
@@ -691,6 +678,25 @@ def main():
     except Exception as e:
         logger.error(f"❌ Error creating data loaders: {e}")
         raise
+
+
+    #batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / accelerator.gradient_accumulation_steps)
+    if training_args.max_train_steps is None:
+        training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
+    else:
+        training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
+
+    if training_args.num_warmup_steps is None and training_args.warmup_ratio is not None:
+        training_args.num_warmup_steps = int(training_args.warmup_ratio * num_update_steps_per_epoch)
+    else:
+        training_args.num_warmup_steps = int(num_update_steps_per_epoch * 0.01)  # Default 1% warmup if not specified
+
+
+    if not training_args.eval_steps:
+        training_args.eval_steps = int(num_update_steps_per_epoch / 4)
+
+
 
     # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
     optimizer, lr_scheduler = create_optimizers_with_parameter_groups(model, training_args, accelerator)
@@ -783,7 +789,8 @@ def main():
     logger.info(f"  Instantaneous batch size per device = {training_args.per_device_train_batch_size}")
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {training_args.train_batch_size}")
     logger.info(f"  Gradient Accumulation steps = {training_args.gradient_accumulation_steps}")
-
+    logger.info(f"  Total optimization steps = {training_args.max_train_steps}")
+    logger.info(f"  Eval steps = {training_args.eval_steps}")
     # Resume handling
     starting_epoch = 0
     resume_step = None
@@ -864,23 +871,22 @@ def main():
                     output_dir = os.path.join(training_args.output_dir, f"step_{completed_steps}")
                     accelerator.save_state(output_dir)
 
-
-
-            if completed_steps >= training_args.max_train_steps:
-                break
+            # if completed_steps >= training_args.max_train_steps:
+            #     break
             if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
                 # Evaluation
                 try:
+                    accelerator.print(f"Running evaluation at step {completed_steps}...")
                     perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
                     if training_args.with_tracking:
                         accelerator.log({
                                 "perplexity": perplexity,
                                 "eval_loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
-                                "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
+                                # "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
                                 "epoch"     : epoch,
                                 "step"      : completed_steps,
                         }, step=completed_steps)
-
+                    accelerator.print(f"Evaluation at step {completed_steps} completed: perplexity={perplexity}, eval_loss={eval_loss}")
                     # Save best model also during steps evaluation
                     if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
                         best_metric = perplexity

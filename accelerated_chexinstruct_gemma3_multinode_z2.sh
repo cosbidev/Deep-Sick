@@ -71,7 +71,7 @@ mkdir -p ./reports/finetune_gemma_findings_zero2_trainer_lora64
 
 export BATCH=4  # Adjust batch size as needed
 export EPOCHS=3  # Adjust number of epochs as needed
-export EVAL_STEPS=512  # Adjust evaluation steps as needed
+export EVAL_STEPS=64  # Adjust evaluation steps as needed
 export GRADIENT_ACCUMULATION_STEPS=4  # Adjust gradient accumulation steps as needed
 
 srun bash -c '
@@ -110,6 +110,7 @@ srun bash -c '
         --checkpointing_divider 1 \
         --load_best_model true \
         --verbose_logging true \
+        --bf16 true
 '
 
 exit_code=$?

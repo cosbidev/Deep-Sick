@@ -11,7 +11,6 @@
 #SBATCH --output=training_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
-
 set -euo pipefail
 
 echo "=== Gemma3 Multi-Node Training (Direct SLURM Method) ==="
@@ -104,6 +103,7 @@ srun bash -c '
         --checkpointing_divider 1 \
         --load_best_model true \
         --verbose_logging true \
+        --bf16 true
 '
 
 

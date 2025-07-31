@@ -19,4 +19,6 @@
     "comms_logger": {
         "enabled": false
     }
+    "gradient_accumulation_steps": "auto",
+    "gradient_clipping": "auto"
 }

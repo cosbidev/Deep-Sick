@@ -522,6 +522,7 @@ def main():
             loss = loss / accelerator.gradient_accumulation_steps
             accelerator.backward(loss)
 
+
             # Aggiorna solo quando l'accumulation è completa
             if (step + 1) % accelerator.gradient_accumulation_steps == 0:
                 optimizer.step()
@@ -546,9 +547,8 @@ def main():
                     if args.output_dir is not None:
                         output_dir = os.path.join(args.output_dir, output_dir)
                     accelerator.save_state(output_dir)
-
-            if completed_steps >= args.max_train_steps:
-                break
+            # if completed_steps >= args.max_train_steps:
+            #     break
 
         perplexity, eval_loss = evaluate(args, model, eval_dataloader, accelerator)
 
