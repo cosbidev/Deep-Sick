@@ -145,6 +145,7 @@ timeout 10800 srun bash -c '  # 3 ore di timeout
         --debug false
 '
 
+
 exit_code=$?
 echo "Training completed with exit code: $exit_code"
 
