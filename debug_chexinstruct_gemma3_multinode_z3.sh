@@ -140,7 +140,7 @@ timeout 10800 srun bash -c '  # 3 ore di timeout
         --load_best_model true \
         --verbose_logging false \
         --bf16 true \
-        --debug false
+        --debug true
 '
 
 exit_code=$?

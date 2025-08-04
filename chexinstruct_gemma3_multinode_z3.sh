@@ -5,15 +5,13 @@
 #SBATCH --ntasks-per-node=4          # one task per GPU
 #SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
 #SBATCH --cpus-per-task=16
-#SBATCH -t 1-13:00:00
-#SBATCH -J "gemma3_MN_debug_z3_normal"
-#SBATCH --error=_debug_%J.err
-#SBATCH --output=_debug_%J.out
+#SBATCH -t 1-16:00:00
+#SBATCH -J "gemma3_4MN_training"
+#SBATCH --error=_TRAIN-FT_%J.err
+#SBATCH --output=_TRAIN-FT_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
 set -euo pipefail
-
-
 
 # Gestione dei segnali per cleanup
 cleanup() {
@@ -84,12 +82,13 @@ echo "=== Launching Training with Direct SLURM (Working Method) ==="
 export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero3_config.yaml"
 
 export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64"
-mkdir -p "./reports/finetune_gemma_findings_zero3_trainer_lora64_twonode_dbg"
+mkdir -p "./reports/finetune_gemma_findings_zero3_trainer_lora_64"
 mkdir -p "$OUTPUT_DIR"  # Assicurati che la directory di output esista
 
+
 export BATCH=4
-export EPOCHS=4
-export EVAL_STEPS=32  # Riduci evaluation steps per testare più spesso
+export EPOCHS=3
+export EVAL_STEPS=64  # Riduci evaluation steps per testare più spesso
 export GRADIENT_ACCUMULATION_STEPS=4  # Aumenta per compensare batch size ridotta
 
 # Configurazioni HuggingFace
@@ -153,7 +152,7 @@ echo "Training completed with exit code: $exit_code"
 echo "=== Final cleanup ==="
 # Termina processi rimasti
 pkill -f "python.*finetune" || true
-# Reset GPU se necessario
+# Reset GPU se necessarios
 nvidia-smi --gpu-reset || true
 
 exit $exit_code

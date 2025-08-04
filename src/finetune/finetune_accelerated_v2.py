@@ -920,7 +920,7 @@ def main():
                 pixel_values = batch['pixel_values']
                 device = pixel_values.device
                 logger.info(f"[DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device} || {completed_steps}")
-
+            # Forward pass -->
             loss = training_step(
                     model=model,
                     batch=batch,
@@ -928,9 +928,13 @@ def main():
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps
             )
 
+
             # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
+                accelerator.wait_for_everyone()
+                # Backward pass <--
                 optimizer.step()
+
                 if lr_scheduler is not None:
                     lr_scheduler.step()
                 optimizer.zero_grad()
@@ -954,6 +958,7 @@ def main():
                 step_loss = accelerator.reduce(loss.clone()).item()
                 if total_loss is not None:
                     total_loss += step_loss
+
 
             # === EVALUATION DURANTE I STEPS (VERSIONE SICURA) ===
             if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
