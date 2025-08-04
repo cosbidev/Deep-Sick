@@ -314,7 +314,12 @@ class BlueprintGroupedSampler(Sampler):
         # Calcola quante batch complete possiamo creare
         max_batches_2img = len(indices_2img) // (samples_2img_per_gpu * self.world_size)
         max_batches_1img = len(indices_1img) // (samples_1img_per_gpu * self.world_size) if samples_1img_per_gpu > 0 else float('inf')
-        max_batches = min(max_batches_2img, max_batches_1img)
+        # Invece di prendere il minimo, dai priorità ai batch basati sulla disponibilità di 2-img
+        # per evitare di troncare molti campioni quando i campioni 1-img sono scarsi.
+        if samples_1img_per_gpu > 0 and max_batches_1img < max_batches_2img:
+            max_batches = max_batches_2img
+        else:
+            max_batches = min(max_batches_2img, max_batches_1img)
 
         print(f"[BlueprintSampler] Strategia: {samples_2img_per_gpu}x2img + {samples_1img_per_gpu}x1img = {images_per_gpu} img/GPU")
         print(f"[BlueprintSampler] Max batches possibili: {max_batches}")

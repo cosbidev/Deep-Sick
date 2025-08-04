@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2024-5-577
 #SBATCH -p alvis
-#SBATCH -N 4                         # two nodes
-#SBATCH --ntasks-per-node=4          # one task per GPU
-#SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
-#SBATCH --cpus-per-task=4
-#SBATCH -t 1-12:00:00
+#SBATCH -N 2                         # 4 nodes
+#SBATCH --ntasks-per-node=1         # one task per GPU
+#SBATCH --gpus-per-node=A100:4       # 4 GPUs per node (A40)
+#SBATCH --cpus-per-task=16
+#SBATCH -t 0-00:45:00
 #SBATCH -J "gemma3_MN_training_z3"
-#SBATCH --error=training_%J.err
-#SBATCH --output=training_%J.out
+#SBATCH --error=training_z3_%J.err
+#SBATCH --output=training_z3_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
 set -euo pipefail
@@ -19,11 +19,22 @@ echo "Nodes: $SLURM_JOB_NODELIST"
 
 # Setup networking (same as diagnostic)
 MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+
+
 MASTER_PORT=$((30000 + RANDOM % 10000))
+echo "GPU ON NODE = $SLURM_GPUS_ON_NODE"
+export GPUs_PER_NODE=4
+
+export WORLD_SIZE=$((SLURM_NNODES * $GPUs_PER_NODE))
+export RANK=$SLURM_PROCID
+
+
+
 
 echo "MASTER_ADDR=$MASTER_ADDR"
 echo "MASTER_PORT=$MASTER_PORT"
-echo "WORLD_SIZE=$SLURM_NTASKS"
+echo "WORLD_SIZE=$WORLD_SIZE"
+
 
 
 # Move to project directory
@@ -37,9 +48,27 @@ echo "✓ Environment activated"
 export WANDB_MODE=online
 
 
+
+export NCCL_PROTO=simple
+
+export FI_EFA_FORK_SAFE=1
+export FI_LOG_LEVEL=1
+export FI_EFA_USE_DEVICE_RDMA=1 # use for p4dn
+
+#export NCCL_ALGO=ring
+export NCCL_DEBUG=info
+#export NCCL_DEBUG_SUBSYS=INIT,ENV,GRAPH,COLL
+
+export PYTHONFAULTHANDLER=1
+
+export CUDA_LAUNCH_BLOCKING=0
+export OMPI_MCA_mtl_base_verbose=1
+export FI_EFA_ENABLE_SHM_TRANSFER=0
+export FI_PROVIDER=efa
+export FI_EFA_TX_MIN_CREDITS=64
+export NCCL_TREE_THRESHOLD=0
+
 # NCCL settings (same as diagnostic)
-export NCCL_SOCKET_IFNAME=ib0
-export NCCL_IB_DISABLE=0
 export NCCL_DEBUG=WARN  # Reduce noise
 
 # Disable distributed debug to reduce noise
@@ -59,56 +88,63 @@ echo "=== Launching Training with Direct SLURM (Working Method) ==="
 # PARAMS for the training script
 export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero3_config.yaml"
 # Use the EXACT same srun pattern that worked in diagnostics
+export ACCELERATE_USE_SLURM=true
 
 export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64"
 mkdir -p ./reports/finetune_gemma_findings_zero3_trainer_lora64
 export BATCH=4  # Adjust batch size as needed
 export EPOCHS=3  # Adjust number of epochs as needed
-export EVAL_STEPS=128  # Adjust evaluation steps as needed
+export EVAL_STEPS=64  # Adjust evaluation steps as needed
 export GRADIENT_ACCUMULATION_STEPS=4  # Adjust gradient accumulation steps as needed
 
-srun bash -c '
-  export RANK=$SLURM_PROCID
-  export LOCAL_RANK=$SLURM_LOCALID
-  export WORLD_SIZE=$SLURM_NTASKS
-  export MASTER_ADDR='"$MASTER_ADDR"'
-  export MASTER_PORT='"$MASTER_PORT"'
 
-  echo "[Rank $RANK] Starting training on $(hostname) with LOCAL_RANK=$LOCAL_RANK"
-  # Run the training script directly (no accelerate launcher)
-    src/finetune/finetune_accelerated_v2.py \
-        --deepspeed_config_file '"$ACCELERATE_CONFIG_FILE"' \
-        --model_name_or_path "google/gemma-3-4b-it" \
-        --dataset_name "chexinstruct" \
-        --dataset_dir "data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings" \
-        --output_dir '"$OUTPUT_DIR"' \
-        --learning_rate 2e-4 \
-        --lr_scheduler_type "cosine_with_restarts" \
-        --per_device_train_batch_size '"$BATCH"' \
-        --per_device_eval_batch_size '"$BATCH"' \
-        --num_train_epochs '"$EPOCHS"'\
-        --report_to wandb \
-        --preprocessing_num_workers 1 \
-        --weight_decay 0.0001 \
-        --warmup_ratio 0.03 \
-        --model_max_length 1500 \
-        --lora_enable true \
-        --lora_alpha 64 \
-        --lora_r 64 \
-        --gradient_checkpointing true \
-        --peft_strategy "lora_gaussian" \
-        --gradient_accumulation_steps '"$GRADIENT_ACCUMULATION_STEPS"' \
-        --eval_steps '"$EVAL_STEPS"' \
-        --checkpointing_strategy epoch \
-        --checkpointing_divider 1 \
-        --load_best_model true \
-        --verbose_logging true \
-        --bf16 true
-'
+######################
+######################
+#### Set network #####
+######################
+######################
 
+export LAUNCHER="accelerate launch \
+    --num_processes $((SLURM_NNODES * $GPUs_PER_NODE)) \
+    --num_machines $SLURM_NNODES \
+    --rdzv_backend c10d \
+    --main_process_ip $MASTER_ADDR \
+    --main_process_port $MASTER_PORT \
+    --machine_rank $SLURM_PROCID \
+    "
+export SCRIPT="src/finetune/finetune_accelerated_v2.py"
+export SCRIPT_ARGS=" \
+    --deepspeed_config_file $ACCELERATE_CONFIG_FILE \
+    --model_name_or_path google/gemma-3-4b-it \
+    --dataset_name chexinstruct \
+    --dataset_dir data_chexinstruct/hf_parquet_gemma_format/gemma_3_findings \
+    --output_dir $OUTPUT_DIR \
+    --learning_rate 2e-4 \
+    --lr_scheduler_type cosine_with_restarts \
+    --per_device_train_batch_size $BATCH \
+    --per_device_eval_batch_size $BATCH \
+    --num_train_epochs $EPOCHS\
+    --report_to wandb \
+    --preprocessing_num_workers 1 \
+    --weight_decay 0.0001 \
+    --warmup_ratio 0.05 \
+    --model_max_length 1500 \
+    --lora_enable true \
+    --lora_alpha 64 \
+    --lora_r 64 \
+    --gradient_checkpointing true \
+    --peft_strategy lora_gaussian \
+    --gradient_accumulation_steps $GRADIENT_ACCUMULATION_STEPS \
+    --eval_steps $EVAL_STEPS \
+    --checkpointing_strategy epoch \
+    --checkpointing_divider 1 \
+    --load_best_model true \
+    --verbose_logging true \
+    --bf16 true \
+    "
+# This step is necessary because accelerate launch does not handle multiline arguments properly
+export CMD="$LAUNCHER $SCRIPT $SCRIPT_ARGS"
+srun $CMD
 
-exit_code=$?
-echo "Training completed with exit code: $exit_code"
-exit $exit_code
 
 

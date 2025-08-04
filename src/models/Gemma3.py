@@ -54,7 +54,10 @@ class GemmaCollator(VisionLanguageDataCollator):
                                                   **kwargs)
         processor.tokenizer.pad_token = processor.tokenizer.eos_token
         processor.tokenizer.padding_side = "right"
+        #processor.image_processor.size = {"height": 512, "width": 512} TODO Adjust size if needed (512x512)
         super().__init__(processor)
+
+
 
 
     @staticmethod

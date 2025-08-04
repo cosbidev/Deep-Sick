@@ -35,7 +35,7 @@ sys.path.extend(["./src", './'])
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
 from util_finetune import rank0_print, BlueprintGroupedSampler, evaluate
-
+from torch.utils.data.distributed import DistributedSampler
 # Environment setup
 os.environ["HF_TOKEN"] = "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"
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
@@ -232,6 +232,7 @@ def initialize_accelerator_safely(training_args):
                 time.sleep(delay)
 
             accelerator = Accelerator(
+                    num_processes=4,
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                     log_with=training_args.report_to if training_args.with_tracking else None,
                     project_dir=training_args.output_dir,
@@ -387,11 +388,6 @@ def setup_model_and_config(model_args, training_args, data_args):
     if training_args.lora_enable:
         print("🔄 Applying LoRA configuration...")
 
-
-        # Debug: Check model state before LoRA
-        #print("📊 Model state BEFORE LoRA:")
-        #debug_tensor_shapes(model, "BEFORE_LORA: ")
-
         model = configure_model_for_training(
                 model,
                 strategy=training_args.peft_strategy,
@@ -526,7 +522,7 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
                 optimizer=optimizer,
                 num_warmup_steps=training_args.num_warmup_steps,
                 num_training_steps=training_args.max_train_steps,
-                scheduler_specific_kwargs = dict(num_cycles=3 ) #lr_decay=0.7
+                scheduler_specific_kwargs = dict(num_cycles=8) #lr_decay=0.7
 
         )
     else:
@@ -583,7 +579,7 @@ def main():
     # Parse arguments with flexible handling
     model_args, data_args, training_args, remaining = parse_args_flexible()
 
-    print("🚀 Starting DeepSpeed Zero-2 Training with LoRA")
+    print("🚀 Starting DeepSpeed Zero-[2/3] Training with LoRA")
     print("=" * 60)
 
     # Setup logging
@@ -607,8 +603,8 @@ def main():
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
     if training_args.debug:
         # Reduce dataset size for debugging purposes
-        train_dataset = train_dataset.select(range(32))
-        eval_dataset = eval_dataset.select(range(16))
+        train_dataset = train_dataset.select(range(10000))
+        eval_dataset = eval_dataset.select(range(1000))
 
 
     print("✅ Datasets loaded successfully")
@@ -620,7 +616,6 @@ def main():
             training_args=training_args,
             data_args=data_args
     )
-
     print("✅ Model and LoRA setup completed")
     # Get collator and tokenizer
     print("🔄 Setting up collator...")
@@ -629,6 +624,7 @@ def main():
             padding_side="left",
             token=hf_token
     )
+
     processor = collator.processor
     tokenizer = collator.tokenizer if hasattr(collator, 'tokenizer') else processor
     print("✅ Collator setup completed")
@@ -650,14 +646,6 @@ def main():
                 lengths=train_dataset["length"],
                 n_images=train_dataset["n_of_images"],
         )
-
-        # sampler_val = BlueprintGroupedSampler(
-        #         batch_size=training_args.per_device_eval_batch_size,
-        #         world_size= accelerator.num_processes,
-        #         lengths=eval_dataset["length"],
-        #         n_images=eval_dataset["n_of_images"],
-        # )
-
         train_dataloader = DataLoader(
                 train_dataset,
                 sampler=sampler_train,
@@ -666,35 +654,89 @@ def main():
                 batch_size=training_args.per_device_train_batch_size,
                 pin_memory=True
         )
+        # # Prima di creare il DataLoader:
+        # if accelerator.num_processes > 1:
+        #     train_sampler = DistributedSampler(
+        #             train_dataset,
+        #             num_replicas=accelerator.num_processes,
+        #             rank=accelerator.process_index,
+        #             shuffle=True
+        #     )
+        #
+        # else:
+        #     train_sampler = None
+        #     eval_sampler = None
+        #     shuffle = True
+        #
+        # train_dataloader = DataLoader(
+        #         train_dataset,
+        #         sampler=train_sampler,
+        #         collate_fn=collator,
+        #         drop_last=True,
+        #         batch_size=training_args.per_device_train_batch_size,
+        #         pin_memory=True,
+        #         shuffle=shuffle
+        # )
+
+        eval_sampler = DistributedSampler(
+                eval_dataset,
+                num_replicas=accelerator.num_processes,
+                rank=accelerator.process_index,
+                shuffle=False
+        )
         eval_dataloader = DataLoader(
                 eval_dataset,
-                # sampler=sampler_val,
+                sampler=eval_sampler,
                 collate_fn=collator,
                 drop_last=True,
-                pin_memory=True,
                 batch_size=training_args.per_device_eval_batch_size,
+                pin_memory=True,
+                shuffle=False
         )
         print("✅ Data loaders created successfully")
     except Exception as e:
         logger.error(f"❌ Error creating data loaders: {e}")
         raise
 
-
     #batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / accelerator.gradient_accumulation_steps)
+
+    # CORREZIONE: Calcolo corretto degli step
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / training_args.gradient_accumulation_steps)
     if training_args.max_train_steps is None:
         training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
     else:
         training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
 
-    if training_args.num_warmup_steps is None and training_args.warmup_ratio is not None:
-        training_args.num_warmup_steps = int(training_args.warmup_ratio * num_update_steps_per_epoch)
-    else:
-        training_args.num_warmup_steps = int(num_update_steps_per_epoch * 0.01)  # Default 1% warmup if not specified
+    if training_args.num_warmup_steps is None:
+        if training_args.warmup_ratio is not None:
 
-
+            training_args.num_warmup_steps = int(training_args.warmup_ratio * training_args.max_train_steps)
+        else:
+            # Default 1% del totale degli step di training (non per epoca!)
+            training_args.num_warmup_steps = int(training_args.max_train_steps * 0.02)
     if not training_args.eval_steps:
-        training_args.eval_steps = int(num_update_steps_per_epoch / 4)
+        training_args.eval_steps = int(num_update_steps_per_epoch / 8)
+
+    # Debug dettagliato dei calcoli
+    print(f"   Raw calculation: {len(train_dataloader)} ÷ {training_args.gradient_accumulation_steps} = {len(train_dataloader) / training_args.gradient_accumulation_steps}")
+    print(f"   Ceiled result: {math.ceil(len(train_dataloader) / training_args.gradient_accumulation_steps)}")
+
+
+
+
+
+
+    print(f"   Train dataset size: {len(train_dataloader)}")
+    print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_train_batch_size}")
+    print(f"   Eval dataset size: {len(eval_dataloader)}")
+    print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_eval_batch_size}")
+    print(f"   Batch size per device ( Train, Eval ): {training_args.per_device_train_batch_size}, {training_args.per_device_eval_batch_size}")
+    print(f"   Gradient accumulation steps: {training_args.gradient_accumulation_steps}")
+    print(f"   Total number of processes: {accelerator.num_processes}")
+    print(f"   Total number of GPUs: {torch.cuda.device_count()}")
+    print(f"   Total number of training epochs: {training_args.num_train_epochs}")
+    print(f"   Total number of warmup steps: {training_args.num_warmup_steps}")
+    print(f"   Total number of training steps x Epoch: {num_update_steps_per_epoch}")
 
 
 
@@ -704,9 +746,30 @@ def main():
 
     # Initialize tracking if enabled
     if training_args.with_tracking:
+        # Config personalizzato per W&B
+        wandb_config = {
+                "model"        : model_args.model_name_or_path,
+                "batch_size"   : training_args.per_device_train_batch_size,
+                "accumulation" : training_args.gradient_accumulation_steps,
+                "learning_rate": training_args.learning_rate,
+                "lora_r"       : training_args.lora_r,
+                "lora_alpha"   : training_args.lora_alpha,
+                "epochs"       : training_args.num_train_epochs,
+                "processes"    : accelerator.num_processes
+        }
+
+
         accelerator.init_trackers(
-                project_name=f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}',
+                project_name=f'{model_args.model_name_or_path.split("/")[-1]}-multinode',
+                config=wandb_config,
+                init_kwargs={
+                        "wandb": {
+                                "name": f'gemma3-multinode-{datetime.now().strftime("%m%d-%H%M")}',
+                                "tags": ["multinode", "gemma3", "lora", "deepspeed"]
+                        }
+                }
         )
+
     print("✅ Accelerator initialized successfully")
     # Final parameter check before prepare
     print("📊 Final parameter check before accelerator.prepare():")
@@ -742,6 +805,29 @@ def main():
         logger.error("This is likely due to empty parameter groups or incompatible configurations")
         raise
 
+    # DOPO accelerator.prepare(), aggiungi questo debug:
+    print(f"   Train dataloader length AFTER prepare: {len(train_dataloader)}")
+    print(f"   Eval dataloader length AFTER prepare: {len(eval_dataloader)}")
+
+    print(f"📊 TRAINING CALCULATION VERIFICATION:")
+    print(f"   Dataset size: {len(train_dataset):,}")
+    print(f"   Dataloader batches: {len(train_dataloader):,}")
+    print(f"   Batch size per device: {training_args.per_device_train_batch_size}")
+    print(f"   Gradient accumulation: {training_args.gradient_accumulation_steps}")
+    print(f"   Number of processes: {accelerator.num_processes}")
+    print(f"   Effective batch size per device: {training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps}")
+    print(f"   Global batch size: {training_args.per_device_train_batch_size * training_args.gradient_accumulation_steps * accelerator.num_processes}")
+    print(f"   Update steps per epoch: {num_update_steps_per_epoch:,}")
+    print(f"   Total training steps: {training_args.max_train_steps:,}")
+    # Debug: Log scheduler configuration
+    try:
+        logger.info(f"  Scheduler total steps = {training_args.max_train_steps}")
+        logger.info(f"  Scheduler warmup steps = {training_args.num_warmup_steps}")
+        if 'lr_scheduler' in locals():
+            scheduler_state = getattr(lr_scheduler, 'state_dict', lambda: {})()
+            logger.info(f"  Scheduler state keys: {list(scheduler_state.keys()) if scheduler_state else 'No state_dict available'}")
+    except Exception as e:
+        logger.warning(f"  Could not log scheduler details: {e}")
     # === LoRA + Gradient Checkpointing Safe Enable ===
     if training_args.debug:
         # Debugging: Check if the dataloaders are correctly set up
@@ -777,12 +863,13 @@ def main():
         os.environ["WANDB_NAME"] = run_name  # alternative alias for run name
 
 
+
     # Progress bar setup
     progress_bar = tqdm(range(training_args.max_train_steps), disable=not accelerator.is_local_main_process)
     best_metric = None
     best_metric_checkpoint = None
 
-    # === Training Loop ===
+    # === Training Loop (VERSIONE CORRETTA) ===
     logger.info("***** Running training *****")
     logger.info(f"  Num examples = {len(train_dataset)}")
     logger.info(f"  Num Epochs = {training_args.num_train_epochs}")
@@ -791,6 +878,7 @@ def main():
     logger.info(f"  Gradient Accumulation steps = {training_args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {training_args.max_train_steps}")
     logger.info(f"  Eval steps = {training_args.eval_steps}")
+
     # Resume handling
     starting_epoch = 0
     resume_step = None
@@ -812,10 +900,11 @@ def main():
             resume_step -= starting_epoch * num_update_steps_per_epoch
             completed_steps = resume_step
 
-
     progress_bar.update(completed_steps)
+
     # Training loop
     for epoch in range(starting_epoch, int(training_args.num_train_epochs)):
+        logger.info(f"||||---- Epoch {epoch + 1} ----||||")
         model.train()
         total_loss = 0 if training_args.with_tracking else None
 
@@ -824,20 +913,21 @@ def main():
                 if training_args.resume_from_checkpoint and epoch == starting_epoch and resume_step is not None
                 else train_dataloader
         )
-        for step, batch in enumerate(active_dataloader):
-            # For DeepSpeed Zero-2, we DON'T use accelerator.accumulate()
-            if training_args.debug:
-                pixel_values = batch['pixel_values']  # shape: (B, C, H, W)
-                device = pixel_values.device
 
+        for step, batch in enumerate(active_dataloader):
+            # Training step
+            if training_args.debug:
+                pixel_values = batch['pixel_values']
+                device = pixel_values.device
                 logger.info(f"[DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device} || {completed_steps}")
-                # as it conflicts with DeepSpeed's gradient partitioning
+
             loss = training_step(
                     model=model,
                     batch=batch,
                     accelerator=accelerator,
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps
             )
+
             # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
                 optimizer.step()
@@ -865,126 +955,219 @@ def main():
                 if total_loss is not None:
                     total_loss += step_loss
 
-            # Checkpointing every N steps
-            if training_args.checkpointing_strategy == 'steps' and training_args.checkpointing_divider is not None:
-                if completed_steps % training_args.checkpointing_divider == 0 and completed_steps > 0:
-                    output_dir = os.path.join(training_args.output_dir, f"step_{completed_steps}")
-                    accelerator.save_state(output_dir)
-
-            # if completed_steps >= training_args.max_train_steps:
-            #     break
+            # === EVALUATION DURANTE I STEPS (VERSIONE SICURA) ===
             if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
-                # Evaluation
+                logger.info(f"Starting evaluation at step {completed_steps}")
+
+                # CRITICAL: Sincronizza PRIMA della valutazione
                 try:
-                    accelerator.print(f"Running evaluation at step {completed_steps}...")
-                    perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-                    if training_args.with_tracking:
+                    accelerator.wait_for_everyone()
+
+                    # Valutazione con gestione errori robusta
+                    perplexity, eval_loss = None, None
+                    try:
+                        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+                        logger.info(f"Evaluation completed: perplexity={perplexity}, eval_loss={eval_loss}")
+                    except Exception as eval_error:
+                        logger.error(f"Evaluation failed at step {completed_steps}: {eval_error}")
+                        perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
+
+                    # Log metrics solo se la valutazione è riuscita
+                    if perplexity is not None and training_args.with_tracking:
                         accelerator.log({
                                 "perplexity": perplexity,
                                 "eval_loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
-                                # "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
                                 "epoch"     : epoch,
                                 "step"      : completed_steps,
                         }, step=completed_steps)
-                    accelerator.print(f"Evaluation at step {completed_steps} completed: perplexity={perplexity}, eval_loss={eval_loss}")
-                    # Save best model also during steps evaluation
-                    if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
-                        best_metric = perplexity
-                        best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
-                        accelerator.save_state(best_metric_checkpoint)
-                        accelerator.print(f"New best metric: {best_metric} at epoch {epoch} and step {completed_steps}")
-                        accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
-                except Exception as e:
-                    perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
-                    logger.warning(f"Evaluation failed: {e} !")
 
+                    # Salvataggio del miglior modello (SOLO MAIN PROCESS)
+                    if accelerator.is_main_process and perplexity is not None and perplexity != float('inf'):
+                        if best_metric is None or best_metric > perplexity:
+                            best_metric = perplexity
+                            best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
+
+                            try:
+                                # Assicurati che la directory esista
+                                os.makedirs(best_metric_checkpoint, exist_ok=True)
+                                accelerator.save_state(best_metric_checkpoint)
+                                logger.info(f"New best metric: {best_metric} at step {completed_steps}")
+                                logger.info(f"Saved to: {best_metric_checkpoint}")
+                            except Exception as save_error:
+                                logger.error(f"Failed to save best checkpoint: {save_error}")
+
+                    # Sincronizza DOPO il salvataggio
+                    accelerator.wait_for_everyone()
+
+                    # Libera memoria dopo valutazione
+                    torch.cuda.empty_cache()
+
+                except Exception as sync_error:
+                    logger.error(f"Synchronization error during evaluation: {sync_error}")
+                    # Non interrompere il training per errori di sincronizzazione
+                    continue
+
+            # === CHECKPOINTING STEPS (VERSIONE SICURA) ===
+            if (training_args.checkpointing_strategy == 'steps' and
+                    training_args.checkpointing_divider is not None and
+                    completed_steps % training_args.checkpointing_divider == 0 and
+                    completed_steps > 0):
+
+                if accelerator.is_main_process:
+                    try:
+                        output_dir = os.path.join(training_args.output_dir, f"step_{completed_steps}")
+                        os.makedirs(output_dir, exist_ok=True)
+                        accelerator.save_state(output_dir)
+                        logger.info(f"Saved step checkpoint: {output_dir}")
+                    except Exception as checkpoint_error:
+                        logger.error(f"Failed to save step checkpoint: {checkpoint_error}")
+
+                # Sincronizza dopo il checkpointing
+                accelerator.wait_for_everyone()
+
+        # === EVALUATION FINE EPOCA (VERSIONE SICURA) ===
+        logger.info(f"Starting end-of-epoch evaluation for epoch {epoch}")
 
         try:
-            perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-        except Exception as e:
-            logger.warning(f"Evaluation failed: {e}")
-            perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
+            # Sincronizza prima della valutazione
+            accelerator.wait_for_everyone()
 
-        if training_args.with_tracking:
-            accelerator.log({
-                    "perplexity": perplexity,
-                    "eval_loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
-                    "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
-                    "epoch"     : epoch,
-                    "step"      : completed_steps,
-            }, step=completed_steps)
+            # Valutazione
+            perplexity, eval_loss = None, None
+            try:
+                perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+                logger.info(f"End-of-epoch evaluation: perplexity={perplexity}, eval_loss={eval_loss}")
+            except Exception as eval_error:
+                logger.error(f"End-of-epoch evaluation failed: {eval_error}")
+                perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
 
+            # Log metrics
+            if training_args.with_tracking and perplexity is not None:
+                accelerator.log({
+                        "perplexity": perplexity,
+                        "eval_loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
+                        "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
+                        "epoch"     : epoch,
+                        "step"      : completed_steps,
+                }, step=completed_steps)
 
-        # Epoch-level checkpointing
-        if training_args.checkpointing_strategy == 'epoch' and isinstance(training_args.checkpointing_divider, int):
-            if (epoch + 1) % training_args.checkpointing_divider == 0 and epoch > 0:
-                save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch}")
-                accelerator.save_state(save_path)
-                accelerator.print(f"Saved checkpoint every_n_epochs at: {save_path}")
-        elif training_args.checkpointing_strategy == 'epoch'  and training_args.checkpointing_divider is None:
-            accelerator.print(f"Saving checkpoint each epoch {epoch}")
-            accelerator.save_state(os.path.join(training_args.output_dir, f"epoch_{epoch}"))
+            # === CHECKPOINTING EPOCA (SOLO MAIN PROCESS) ===
+            if accelerator.is_main_process:
+                try:
+                    # Checkpoint periodici per epoca
+                    if (training_args.checkpointing_strategy == 'epoch' and
+                            isinstance(training_args.checkpointing_divider, int)):
+                        if (epoch + 1) % training_args.checkpointing_divider == 0:
+                            save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch}")
+                            os.makedirs(save_path, exist_ok=True)
+                            accelerator.save_state(save_path)
+                            logger.info(f"Saved periodic epoch checkpoint: {save_path}")
 
+                    # Checkpoint ogni epoca
+                    elif (training_args.checkpointing_strategy == 'epoch' and
+                          training_args.checkpointing_divider is None):
+                        save_path = os.path.join(training_args.output_dir, f"epoch_{epoch}")
+                        os.makedirs(save_path, exist_ok=True)
+                        accelerator.save_state(save_path)
+                        logger.info(f"Saved epoch checkpoint: {save_path}")
 
+                    # Salva miglior modello
+                    if perplexity is not None and perplexity != float('inf'):
+                        if best_metric is None or best_metric > perplexity:
+                            best_metric = perplexity
+                            best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
+                            os.makedirs(best_metric_checkpoint, exist_ok=True)
+                            accelerator.save_state(best_metric_checkpoint)
+                            logger.info(f"New best metric: {best_metric} at epoch {epoch}")
+                            logger.info(f"Saved to: {best_metric_checkpoint}")
 
-        # Save best model
-        if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
-            best_metric = perplexity
-            best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
-            accelerator.save_state(best_metric_checkpoint)
-            accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
-            accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
+                except Exception as save_error:
+                    logger.error(f"Failed to save epoch checkpoint: {save_error}")
 
+            # Sincronizza dopo tutti i salvataggi
+            accelerator.wait_for_everyone()
 
+            # Libera memoria
+            torch.cuda.empty_cache()
 
+        except Exception as epoch_error:
+            logger.error(f"Error during end-of-epoch processing: {epoch_error}")
+            # Continua con l'epoca successiva
+            continue
 
-    # Reload best checkpoint
-    if training_args.load_best_model and best_metric_checkpoint:
-        accelerator.load_state(best_metric_checkpoint)
-    # Final evaluation
+    logger.info("Training loop completed successfully!")
+
+    # === EVALUATION FINALE ===
+    logger.info("Starting final evaluation...")
+
+    # Carica il miglior checkpoint se richiesto
+    if training_args.load_best_model and best_metric_checkpoint and os.path.exists(best_metric_checkpoint):
+        try:
+            logger.info(f"Loading best checkpoint: {best_metric_checkpoint}")
+            accelerator.load_state(best_metric_checkpoint)
+            logger.info("Best checkpoint loaded successfully")
+        except Exception as load_error:
+            logger.error(f"Failed to load best checkpoint: {load_error}")
+
+    # Valutazione finale
     try:
+        accelerator.wait_for_everyone()
+
         perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-        logger.info(f"Final model metrics: perplexity: {perplexity} eval_loss: {eval_loss}")
+        logger.info(f"Final model metrics: perplexity={perplexity}, eval_loss={eval_loss}")
 
         if best_metric and perplexity != best_metric and perplexity != float('inf'):
             logger.warning(
-                    f"Best metric {best_metric} does not match the metric {perplexity} of the loaded best model."
+                    f"Best metric {best_metric} does not match final metric {perplexity}."
             )
-    except Exception as e:
-        logger.error(f"Final evaluation failed: {e}")
+    except Exception as final_eval_error:
+        logger.error(f"Final evaluation failed: {final_eval_error}")
         perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
-
-    # Save final model and tokenizer
+    # === SALVATAGGIO FINALE ===
     if training_args.output_dir is not None:
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
         try:
+            accelerator.wait_for_everyone()
+
+            # Salva modello finale
+            unwrapped_model = accelerator.unwrap_model(model)
             unwrapped_model.save_pretrained(
                     training_args.output_dir,
                     is_main_process=accelerator.is_main_process,
                     save_function=accelerator.save,
                     state_dict=accelerator.get_state_dict(model),
             )
+
+            # Salva tokenizer (solo main process)
             if accelerator.is_main_process and tokenizer is not None:
                 tokenizer.save_pretrained(training_args.output_dir)
 
-            # Save results
-            results = {
-                    "perplexity": perplexity if perplexity != float('inf') else "inf",
-                    "eval_loss" : eval_loss.item() if hasattr(eval_loss, 'item') else eval_loss
-            }
-            with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
-                json.dump(results, f)
+                # Salva risultati finali
+                results = {
+                        "perplexity" : perplexity if perplexity != float('inf') else "inf",
+                        "eval_loss"  : eval_loss.item() if hasattr(eval_loss, 'item') else eval_loss,
+                        "best_metric": best_metric if best_metric is not None else "not_computed"
+                }
 
-            print("✅ Model and results saved successfully")
-        except Exception as e:
-            logger.error(f"Error saving model: {e}")
+                results_path = os.path.join(training_args.output_dir, "all_results.json")
+                with open(results_path, "w") as f:
+                    json.dump(results, f, indent=2)
+
+                logger.info(f"Results saved to: {results_path}")
+
+            logger.info("✅ Model and results saved successfully")
+
+        except Exception as save_error:
+            logger.error(f"Error saving final model: {save_error}")
+
 
     # End tracking
     if training_args.with_tracking:
-        accelerator.end_training()
+        try:
+            accelerator.end_training()
+        except Exception as tracking_error:
+            logger.error(f"Error ending tracking: {tracking_error}")
 
-    print("🎉 Training completed successfully!")
+    logger.info("🎉 Training completed successfully!")
     logger.info("|/| May the force be with you! Training completed successfully.")
 
 if __name__ == "__main__":
