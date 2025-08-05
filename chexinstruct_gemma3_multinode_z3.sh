@@ -3,31 +3,67 @@
 #SBATCH -p alvis
 #SBATCH -N 4                        # 4 nodes
 #SBATCH --ntasks-per-node=4          # one task per GPU
-#SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
+#SBATCH --gpus-per-node=A40:4       # 4 GPUs per node
 #SBATCH --cpus-per-task=16
-#SBATCH -t 1-16:00:00
+#SBATCH -t 1-18:00:00
 #SBATCH -J "gemma3_4MN_training"
 #SBATCH --error=_TRAIN-FT_%J.err
 #SBATCH --output=_TRAIN-FT_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
 set -euo pipefail
-
-# Gestione dei segnali per cleanup
-cleanup() {
-    echo "=== Cleanup started ==="
-    # Termina tutti i processi Python
-    pkill -f "finetune_accelerated_v2.py" || true
-    # Pulisci la memoria GPU
-    nvidia-smi --gpu-reset || true
-    echo "=== Cleanup completed ==="
-}
-trap cleanup EXIT INT TERM
-
+# Cleanup function to terminate processes and reset GPUs
 echo "=== Gemma3 Multi-Node Training (Direct SLURM Method) ==="
 echo "Job ID: $SLURM_JOB_ID"
 echo "Nodes: $SLURM_JOB_NODELIST"
 
+
+
+# =============================================================================
+# NETWORK INTERFACE DETECTION USING ASSIGNED RESOURCES
+# =============================================================================
+
+# Show all available interfaces
+echo "Available network interfaces:"
+ip addr show | grep -E "^[0-9]+:" | awk '{print "  " $2}' | sed 's/://'
+
+echo "=== Alvis Network Configuration ==="
+echo "Node: $(hostname)"
+echo "Available interfaces:"
+ip addr show | grep -E "^[0-9]+:" | awk '{print "  " $2}' | sed 's/://'
+
+export NETWORK_INTERFACE="ens27f0np0"
+
+# Verify it exists and has IP
+if ip addr show "$NETWORK_INTERFACE" 2>/dev/null | grep -q "inet "; then
+    echo "✅ Interface $NETWORK_INTERFACE is configured and ready"
+    INTERFACE_IP=$(ip addr show "$NETWORK_INTERFACE" | grep "inet " | head -1 | awk '{print $2}' | cut -d'/' -f1)
+    echo "Interface IP: $INTERFACE_IP"
+else
+    echo "⚠️  $NETWORK_INTERFACE has no IP, checking VLAN interfaces..."
+
+    # Try VLAN interfaces
+    for vlan_if in ens27f0np0.1044 ens27f0np0.1043; do
+        if ip addr show "$vlan_if" 2>/dev/null | grep -q "inet "; then
+            NETWORK_INTERFACE="$vlan_if"
+            echo "✅ Using VLAN interface: $NETWORK_INTERFACE"
+            INTERFACE_IP=$(ip addr show "$NETWORK_INTERFACE" | grep "inet " | head -1 | awk '{print $2}' | cut -d'/' -f1)
+            echo "Interface IP: $INTERFACE_IP"
+            break
+        fi
+    done
+fi
+
+
+# =============================================================================
+# NETWORK ENVIRONMENT CONFIGURATION
+# =============================================================================
+# Move to project directory
+cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick || { echo "Workspace not found"; exit 1; }
+
+# Load environment
+source activateEnv.sh
+echo "✓ Environment activated"
 # Setup networking (same as diagnostic)
 MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 MASTER_PORT=$((30000 + RANDOM % 10000))
@@ -42,20 +78,12 @@ echo "GPU ON NODE = $SLURM_GPUS_ON_NODE"
 echo "MASTER_ADDR=$MASTER_ADDR"
 echo "MASTER_PORT=$MASTER_PORT"
 echo "WORLD_SIZE=$WORLD_SIZE"
+# Configure NCCL with detected interface
+export NCCL_SOCKET_IFNAME="$NETWORK_INTERFACE"
+export NCCL_DEBUG=INFO  # Show detailed network info
+export NCCL_TIMEOUT=1800
 
-
-# Move to project directory
-cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick || { echo "Workspace not found"; exit 1; }
-
-# Load environment
-source activateEnv.sh
-echo "✓ Environment activated"
-
-# Configurazioni NCCL ottimizzate per stabilità
 export WANDB_MODE=online
-export NCCL_SOCKET_IFNAME=ib0
-export NCCL_IB_DISABLE=0
-export NCCL_DEBUG=WARN
 export NCCL_TREE_THRESHOLD=0  # Forza collective algorithms più stabili
 export NCCL_P2P_DISABLE=0     # Abilita P2P per migliori performance
 export NCCL_IB_TIMEOUT=22     # Aumenta timeout IB
@@ -64,7 +92,7 @@ export TORCH_DISTRIBUTED_DEBUG=DETAIL  # Più dettagli per debug
 
 # Configurazioni PyTorch per stabilità
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
-export CUDA_LAUNCH_BLOCKING=0  # Non bloccare per performance
+export CUDA_LAUNCH_BLOCKING=0
 
 ######################
 ### Verify Training Files
@@ -82,12 +110,12 @@ echo "=== Launching Training with Direct SLURM (Working Method) ==="
 export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero3_config.yaml"
 
 export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64"
-mkdir -p "./reports/finetune_gemma_findings_zero3_trainer_lora_64"
+mkdir -p "./reports/finetune_gemma_findings_zero3_trainer_lora64"
 mkdir -p "$OUTPUT_DIR"  # Assicurati che la directory di output esista
 
 
 export BATCH=4
-export EPOCHS=3
+export EPOCHS=4
 export EVAL_STEPS=64  # Riduci evaluation steps per testare più spesso
 export GRADIENT_ACCUMULATION_STEPS=4  # Aumenta per compensare batch size ridotta
 
@@ -99,7 +127,7 @@ export HF_DATASETS_OFFLINE=1
 export HF_HUB_OFFLINE=1
 
 # Aggiungi timeout per processi bloccati
-timeout 10800 srun bash -c '  # 3 ore di timeout
+timeout 10800 srun bash -c '
   export RANK=$SLURM_PROCID
   export LOCAL_RANK=$SLURM_LOCALID
   export WORLD_SIZE='"$WORLD_SIZE"'
@@ -109,9 +137,13 @@ timeout 10800 srun bash -c '  # 3 ore di timeout
   echo "[Rank $RANK] Starting training on $(hostname) with LOCAL_RANK=$LOCAL_RANK"
   echo "WORLD_SIZE = $WORLD_SIZE"
   echo "OUTPUT_DIR = '"$OUTPUT_DIR"'"
-
   # Crea directory di output per questo processo
   mkdir -p '"$OUTPUT_DIR"'
+  # ✅ ADD: Wait for all processes to reach this point
+  sleep $((RANK * 2))  # Stagger startup to prevent race conditions
+
+  # ✅ ADD: Verify GPU is available
+  nvidia-smi -L || { echo "GPU not available on $(hostname)"; exit 1; }
 
   # Run the training script directly (no accelerate launcher)
   python src/finetune/finetune_accelerated_v2.py \
@@ -145,7 +177,6 @@ timeout 10800 srun bash -c '  # 3 ore di timeout
         --debug false
 '
 
-
 exit_code=$?
 echo "Training completed with exit code: $exit_code"
 
@@ -153,7 +184,4 @@ echo "Training completed with exit code: $exit_code"
 echo "=== Final cleanup ==="
 # Termina processi rimasti
 pkill -f "python.*finetune" || true
-# Reset GPU se necessarios
-nvidia-smi --gpu-reset || true
-
 exit $exit_code

@@ -3,7 +3,7 @@
 #SBATCH -p alvis
 #SBATCH -N 2                        # two nodes
 #SBATCH --ntasks-per-node=4          # one task per GPU
-#SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
+#SBATCH --gpus-per-node=A40:4       # 4 GPUs per node
 #SBATCH --cpus-per-task=16
 #SBATCH -t 0-01:00:00               # Aumenta il timeout
 #SBATCH -J "gemma3_MN_debug_z3_normal"
@@ -61,7 +61,8 @@ export NCCL_P2P_DISABLE=0     # Abilita P2P per migliori performance
 export NCCL_IB_TIMEOUT=22     # Aumenta timeout IB
 export NCCL_BLOCKING_WAIT=1   # Usa blocking wait per stabilità
 export TORCH_DISTRIBUTED_DEBUG=DETAIL  # Più dettagli per debug
-
+export NCCL_TIMEOUT=1800
+export GLOO_SOCKET_TIMEOUT=300
 # Configurazioni PyTorch per stabilità
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 export CUDA_LAUNCH_BLOCKING=0  # Non bloccare per performance

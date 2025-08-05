@@ -7,6 +7,9 @@ import logging
 from torch.utils.data import Sampler
 from transformers import MODEL_MAPPING,  SchedulerType
 from transformers.trainer_pt_utils import get_length_grouped_indices as get_length_grouped_indices_hf
+
+from src.distributed import safe_wait_for_everyone_simple
+
 MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 import torch.distributed as dist
@@ -40,9 +43,11 @@ def group_texts(examples, block_size=512):
     result["labels"] = result["input_ids"].copy()
     return result
 
-
 # New Code #
 def evaluate(training_args, model, eval_dataloader, accelerator):
+    # Sync after evaluation
+    safe_wait_for_everyone_simple(accelerator)
+
     model.eval()
     losses = []
     for step, batch in enumerate(eval_dataloader):
@@ -53,6 +58,10 @@ def evaluate(training_args, model, eval_dataloader, accelerator):
         losses.append(accelerator.gather_for_metrics(loss.repeat(training_args.per_device_eval_batch_size)))
 
     losses = torch.cat(losses)
+
+    # Sync after evaluation
+    safe_wait_for_everyone_simple(accelerator)
+
     try:
         eval_loss = torch.mean(losses)
         perplexity = math.exp(eval_loss)
