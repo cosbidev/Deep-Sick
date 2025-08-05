@@ -9,51 +9,7 @@ from accelerate.state import DistributedType
 logger = logging.getLogger(__name__)
 
 
-def safe_wait_for_everyone(accelerator, timeout_seconds=300):
-    """
-    Enhanced wait_for_everyone with proper timeout and error handling.
-
-    Args:
-        accelerator: Accelerate Accelerator instance
-        timeout_seconds: Timeout in seconds for synchronization operations
-
-    Raises:
-        RuntimeError: If synchronization fails or accelerator is None
-    """
-    if accelerator is None:
-        raise RuntimeError("Accelerator cannot be None")
-
-    try:
-        # Use accelerator's built-in synchronization
-        accelerator.wait_for_everyone()
-
-        # Additional distributed barrier only if we're in a distributed setup
-        # and PyTorch distributed is properly initialized
-        if (accelerator.state.distributed_type in [DistributedType.MULTI_GPU, DistributedType.MULTI_CPU] and
-                hasattr(dist, 'is_initialized') and dist.is_initialized()):
-
-            # Create timeout object
-            timeout = timedelta(seconds=timeout_seconds)
-
-            # Use barrier with timeout
-            dist.barrier(timeout=timeout)
-
-        logger.debug("Process synchronization completed successfully")
-
-    except Exception as e:
-        error_msg = f"Process synchronization failed: {str(e)}"
-        logger.error(error_msg)
-
-        # Try to provide more specific error information
-        if "timeout" in str(e).lower():
-            error_msg += f" (timeout after {timeout_seconds} seconds)"
-        elif "connection" in str(e).lower():
-            error_msg += " (network connection issue)"
-
-        raise RuntimeError(error_msg) from e
-
-
-def safe_wait_for_everyone_simple(accelerator, timeout_seconds=300):
+def safe_wait_for_everyone_simple(accelerator):
     """
     Simplified version that only uses accelerator's built-in synchronization.
     More reliable for most use cases.

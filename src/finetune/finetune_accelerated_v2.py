@@ -14,7 +14,7 @@ from tqdm import tqdm
 import os
 import json
 import logging
-from accelerate.utils import DummyOptim, DummyScheduler, set_seed
+from accelerate.utils import DummyOptim, DummyScheduler
 import torch
 import transformers
 from transformers import (
@@ -34,7 +34,7 @@ import sys
 sys.path.extend(["./src", './'])
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
-from src.distributed import safe_wait_for_everyone, checkpoint_save_with_sync
+from src.distributed import checkpoint_save_with_sync, safe_wait_for_everyone_simple
 from util_finetune import rank0_print, BlueprintGroupedSampler, evaluate
 from torch.utils.data.distributed import DistributedSampler
 # Environment setup
@@ -520,10 +520,9 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
         lr_scheduler = get_scheduler(
                 name=training_args.lr_scheduler_type,
                 optimizer=optimizer,
-                num_warmup_steps=training_args.num_warmup_steps,
-                num_training_steps=training_args.max_train_steps,
-                scheduler_specific_kwargs = dict(num_cycles=8) #lr_decay=0.7
-
+                num_warmup_steps=training_args.num_warmup_steps * accelerator.num_processes,
+                num_training_steps=training_args.max_train_steps * accelerator.num_processes,
+                scheduler_specific_kwargs = dict(num_cycles=training_args.num_train_epochs * 2)
         )
     else:
         lr_scheduler = DummyScheduler(
@@ -721,21 +720,19 @@ def main():
     print(f"   Raw calculation: {len(train_dataloader)} ÷ {training_args.gradient_accumulation_steps} = {len(train_dataloader) / training_args.gradient_accumulation_steps}")
     print(f"   Ceiled result: {math.ceil(len(train_dataloader) / training_args.gradient_accumulation_steps)}")
 
-
-    print("PRE-ACCELERATOR PREPARE DEBUG:")
-    print(f"   Train dataset size: {len(train_dataloader)}")
-    print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_train_batch_size}")
-    print(f"   Eval dataset size: {len(eval_dataloader)}")
-    print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_eval_batch_size}")
-    print(f"   Batch size per device ( Train, Eval ): {training_args.per_device_train_batch_size}, {training_args.per_device_eval_batch_size}")
-    print(f"   Gradient accumulation steps: {training_args.gradient_accumulation_steps}")
-    print(f"   Total number of processes: {accelerator.num_processes}")
-    print(f"   Total number of GPUs: {torch.cuda.device_count()}")
-    print(f"   Total number of training epochs: {training_args.num_train_epochs}")
-    print(f"   Total number of warmup steps: {training_args.num_warmup_steps}")
-    print(f"   Total number of training steps x Epoch: {num_update_steps_per_epoch}")
-
-
+    if accelerator.is_main_process:
+        print(f"📊 TRAINING PRE-ACCELERATOR PREPARE DEBUG:")
+        print(f"   Train dataset size: {len(train_dataloader)}")
+        print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_train_batch_size}")
+        print(f"   Eval dataset size: {len(eval_dataloader)}")
+        print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_eval_batch_size}")
+        print(f"   Batch size per device ( Train, Eval ): {training_args.per_device_train_batch_size}, {training_args.per_device_eval_batch_size}")
+        print(f"   Gradient accumulation steps: {training_args.gradient_accumulation_steps}")
+        print(f"   Total number of processes: {accelerator.num_processes}")
+        print(f"   Total number of GPUs: {torch.cuda.device_count()}")
+        print(f"   Total number of training epochs: {training_args.num_train_epochs}")
+        print(f"   Total number of warmup steps: {training_args.num_warmup_steps}")
+        print(f"   Total number of training steps x Epoch: {num_update_steps_per_epoch}")
 
     # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
     optimizer, lr_scheduler = create_optimizers_with_parameter_groups(model, training_args, accelerator)
@@ -818,14 +815,14 @@ def main():
         print(f"   Total number of training steps x Epoch: {num_update_steps_per_epoch}")
 
 
-    try:
-        logger.info(f"  Scheduler total steps = {training_args.max_train_steps}")
-        logger.info(f"  Scheduler warmup steps = {training_args.num_warmup_steps}")
-        if 'lr_scheduler' in locals():
-            scheduler_state = getattr(lr_scheduler, 'state_dict', lambda: {})()
-            logger.info(f"  Scheduler state keys: {list(scheduler_state.keys()) if scheduler_state else 'No state_dict available'}")
-    except Exception as e:
-        logger.warning(f"  Could not log scheduler details: {e}")
+        try:
+            logger.info(f"  Scheduler total steps = {training_args.max_train_steps}")
+            logger.info(f"  Scheduler warmup steps = {training_args.num_warmup_steps}")
+            if 'lr_scheduler' in locals():
+                scheduler_state = getattr(lr_scheduler, 'state_dict', lambda: {})()
+                logger.info(f"  Scheduler state keys: {list(scheduler_state.keys()) if scheduler_state else 'No state_dict available'}")
+        except Exception as e:
+            logger.warning(f"  Could not log scheduler details: {e}")
     # === LoRA + Gradient Checkpointing Safe Enable ===
     if training_args.debug:
         # Debugging: Check if the dataloaders are correctly set up
@@ -932,7 +929,7 @@ def main():
             # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
 
-                safe_wait_for_everyone(accelerator=accelerator)
+                safe_wait_for_everyone_simple(accelerator=accelerator)
                 # Backward pass <--
                 optimizer.step()
 
@@ -966,7 +963,7 @@ def main():
 
                 # CRITICAL: Sincronizza PRIMA della valutazione
                 try:
-                    safe_wait_for_everyone(accelerator=accelerator)
+                    safe_wait_for_everyone_simple(accelerator=accelerator)
 
                     # Valutazione con gestione errori robusta
                     perplexity, eval_loss = None, None
@@ -1004,7 +1001,7 @@ def main():
 
 
                     # Sincronizza DOPO il salvataggio
-                    safe_wait_for_everyone(accelerator=accelerator)
+                    safe_wait_for_everyone_simple(accelerator=accelerator)
                 except Exception as sync_error:
                     logger.error(f"Synchronization error during evaluation: {sync_error}")
                     # Non interrompere il training per errori di sincronizzazione
@@ -1015,7 +1012,7 @@ def main():
 
         try:
             # Sincronizza prima della valutazione
-            safe_wait_for_everyone(accelerator=accelerator)
+            safe_wait_for_everyone_simple(accelerator=accelerator)
             # Valutazione
             perplexity, eval_loss = None, None
             try:
@@ -1054,7 +1051,7 @@ def main():
                     logger.error(f"Failed to save epoch checkpoint: {save_error}")
 
             # Sincronizza dopo tutti i salvataggi
-            safe_wait_for_everyone(accelerator=accelerator)
+            safe_wait_for_everyone_simple(accelerator=accelerator)
 
         except Exception as epoch_error:
             logger.error(f"Error during end-of-epoch processing: {epoch_error}")
@@ -1077,7 +1074,7 @@ def main():
 
     # Valutazione finale
     try:
-        safe_wait_for_everyone(accelerator=accelerator)
+        safe_wait_for_everyone_simple(accelerator=accelerator)
 
         perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
         logger.info(f"Final model metrics: perplexity={perplexity}, eval_loss={eval_loss}")
@@ -1095,7 +1092,7 @@ def main():
                     "step"      : completed_steps,
             }, step=completed_steps)
 
-        safe_wait_for_everyone(accelerator=accelerator)
+        safe_wait_for_everyone_simple(accelerator=accelerator)
 
     except Exception as final_eval_error:
         logger.error(f"Final evaluation failed: {final_eval_error}")
@@ -1103,7 +1100,7 @@ def main():
     # === SALVATAGGIO FINALE ===
     if training_args.output_dir is not None:
         try:
-            safe_wait_for_everyone(accelerator=accelerator)
+            safe_wait_for_everyone_simple(accelerator=accelerator)
 
             # Salva modello finale
             unwrapped_model = accelerator.unwrap_model(model)
