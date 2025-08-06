@@ -947,11 +947,9 @@ def main():
             completed_steps = resume_step
 
     progress_bar.update(completed_steps)
-
     # Training loop
     for epoch in range(starting_epoch, int(training_args.num_train_epochs)):
         logger.info(f"||||---- Epoch {epoch + 1} ----||||")
-        model.train()
         total_loss = 0 if training_args.with_tracking else None
 
         active_dataloader = (
@@ -980,7 +978,7 @@ def main():
             # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
 
-                safe_wait_for_everyone_simple(accelerator=accelerator)
+                #safe_wait_for_everyone_simple(accelerator=accelerator)
                 # Backward pass <--
                 optimizer.step()
 
@@ -1006,6 +1004,7 @@ def main():
                 step_loss = accelerator.reduce(loss.clone()).item()
                 if total_loss is not None:
                     total_loss += step_loss
+
 
             # === EVALUATION DURANTE I STEPS (VERSIONE SICURA) ===
             if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
@@ -1053,13 +1052,11 @@ def main():
                                     "perplexity" : perplexity,
                                     "eval_loss"  : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item()
                             }
-
                     safe_wait_for_everyone_simple(accelerator=accelerator)
                     model.train()  # Assicurati che il modello sia in modalità train dopo la valutazione
 
                 except Exception as sync_error:
                     logger.error(f"Synchronization error during evaluation: {sync_error}")
-
         # === EVALUATION FINE EPOCA (VERSIONE SICURA) ===
         logger.info(f"Starting end-of-epoch evaluation for epoch {epoch}")
         # For saving later, create a temporary model:
@@ -1077,8 +1074,6 @@ def main():
                     additional_info=checkpoint_info
             )
             del temp_model  # Clean up
-
-
         try:
             # Sincronizza prima della valutazione
             safe_wait_for_everyone_simple(accelerator=accelerator)
@@ -1126,18 +1121,6 @@ def main():
 
 
     logger.info("Epoch Training loop completed successfully!")
-    # === EVALUATION FINALE ===
-    # logger.info("Starting final evaluation...")
-
-    # # Carica il miglior checkpoint se richiesto
-    # if training_args.load_best_model and best_metric_checkpoint and os.path.exists(best_metric_checkpoint):
-    #     try:
-    #         logger.info(f"Loading best checkpoint: {best_metric_checkpoint}")
-    #         accelerator.load_state(best_metric_checkpoint)
-    #         logger.info("Best checkpoint loaded successfully")
-    #     except Exception as load_error:
-    #         logger.error(f"Failed to load best checkpoint: {load_error}")
-
     # Valutazione finale
     try:
         safe_wait_for_everyone_simple(accelerator=accelerator)
