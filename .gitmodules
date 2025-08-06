@@ -1,3 +1,6 @@
 [submodule "modules/cxr-metrics"]
 	path = modules/cxr-metrics
 	url = https://github.com/rajpurkarlab/CXR-Report-Metric.git
+[submodule "modules/ReXrank"]
+	path = modules/ReXrank
+	url = https://github.com/rajpurkarlab/ReXrank.git
