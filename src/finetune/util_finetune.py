@@ -46,12 +46,14 @@ def group_texts(examples, block_size=512):
     return result
 
 # New Code #
-def evaluate(training_args, model, eval_dataloader, accelerator):
+def evaluate(training_args, model, eval_dataloader, accelerator, logger):
     # Sync after evaluation
 
     model.eval()
     losses = []
     for step, batch in enumerate(eval_dataloader):
+        if accelerator.is_main_process:
+            logger.info(f"||||Step {step + 1} / {len(eval_dataloader)} ||||")
         with torch.no_grad():
             outputs = model(**batch)
 

@@ -13,6 +13,7 @@
 #SBATCH --mail-user=ruffin02@outlook.it
 set -euo pipefail
 
+
 echo "=== Gemma3 Multi-Node Training (Direct SLURM Method) ==="
 echo "Job ID: $SLURM_JOB_ID"
 echo "Nodes: $SLURM_JOB_NODELIST"
@@ -105,15 +106,18 @@ echo "=== Launching Training with Direct SLURM (Working Method) ==="
 export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero3_config.yaml"
 # Use the EXACT same srun pattern that worked in diagnostics
 
-export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64"
-mkdir -p "./reports/finetune_gemma_findings_zero3_trainer_lora64_twonode_dbg"
+
+
+
+export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64_vanilla"
+
 mkdir -p "$OUTPUT_DIR"  # Assicurati che la directory di output esista
 
 
 export BATCH=4
 export EPOCHS=4
-export EVAL_STEPS=16  # Riduci evaluation steps per testare più spesso
-export GRADIENT_ACCUMULATION_STEPS=4  # Aumenta per compensare batch size ridotta
+export EVAL_STEPS=64  # Riduci evaluation steps per testare più spesso
+export GRADIENT_ACCUMULATION_STEPS=8  # Aumenta per compensare batch size ridotta
 
 # Aggiungi timeout per processi bloccati
 srun bash -c '  # 3 ore di timeout
@@ -130,7 +134,6 @@ srun bash -c '  # 3 ore di timeout
   # Crea directory di output per questo processo
   mkdir -p '"$OUTPUT_DIR"'
 
-
   # Run the training script directly (no accelerate launcher)
   python src/finetune/finetune_accelerated_v2.py \
         --deepspeed_config_file '"$ACCELERATE_CONFIG_FILE"' \
@@ -146,7 +149,7 @@ srun bash -c '  # 3 ore di timeout
         --report_to wandb \
         --preprocessing_num_workers 1 \
         --weight_decay 0.0001 \
-        --warmup_ratio 0.1 \
+        --warmup_ratio 0.01 \
         --model_max_length 1500 \
         --lora_enable true \
         --lora_alpha 64 \
@@ -162,8 +165,6 @@ srun bash -c '  # 3 ore di timeout
         --bf16 true \
         --debug false
 '
-
-
 exit_code=$?
 echo "Training completed with exit code: $exit_code"
 

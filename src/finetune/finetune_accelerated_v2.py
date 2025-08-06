@@ -1007,7 +1007,6 @@ def main():
                 if total_loss is not None:
                     total_loss += step_loss
 
-
             # === EVALUATION DURANTE I STEPS (VERSIONE SICURA) ===
             if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
                 if accelerator.is_main_process:
@@ -1017,7 +1016,7 @@ def main():
                     # Valutazione con gestione errori robusta
                     perplexity, eval_loss = None, None
                     try:
-                        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+                        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator, logger)
 
                         if accelerator.is_main_process:
                             logger.info(f"Evaluation completed: perplexity={perplexity}, eval_loss={eval_loss}")
@@ -1086,7 +1085,7 @@ def main():
             # Valutazione
             perplexity, eval_loss = None, None
             try:
-                perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+                perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator, logger)
                 logger.info(f"End-of-epoch evaluation: perplexity={perplexity}, eval_loss={eval_loss}")
             except Exception as eval_error:
                 logger.error(f"End-of-epoch evaluation failed: {eval_error}")
@@ -1143,7 +1142,7 @@ def main():
     try:
         safe_wait_for_everyone_simple(accelerator=accelerator)
 
-        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator, logger)
         logger.info(f"Final model metrics: perplexity={perplexity}, eval_loss={eval_loss}")
 
         if best_metric and perplexity != best_metric and perplexity != float('inf'):
