@@ -3,7 +3,7 @@
 #SBATCH -p alvis
 #SBATCH -N 4                        # 4 nodes
 #SBATCH --ntasks-per-node=4          # one task per GPU
-#SBATCH --gpus-per-node=A40:4       # 4 GPUs per node
+#SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
 #SBATCH --cpus-per-task=16
 #SBATCH -t 1-18:00:00
 #SBATCH -J "gemma3_4MN_training"

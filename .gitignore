@@ -34,3 +34,4 @@ bash/.DS_Store
 /data/mimic-nle/mimic-nle-train.json
 /data/mimic-nle/query/test-query.json
 /data/mimic-nle/query/train-query.json
+/activateEnv.sh

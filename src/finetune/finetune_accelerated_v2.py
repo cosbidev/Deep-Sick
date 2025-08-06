@@ -38,7 +38,6 @@ from src.distributed import checkpoint_save_with_sync, safe_wait_for_everyone_si
 from util_finetune import rank0_print, BlueprintGroupedSampler, evaluate
 from torch.utils.data.distributed import DistributedSampler
 # Environment setup
-os.environ["HF_TOKEN"] = "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"
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
 os.environ["HF_DATASETS_CACHE"] = cache_dir
 os.environ["HF_HOME"] = cache_dir
@@ -547,6 +546,55 @@ def call_forward_dummy(dummy_inputs, model, device="cuda"):
     loss = out.loss
     return loss
 
+
+def save_complete_checkpoint(
+        model, accelerator,
+        save_path, tokenizer=None, logger=None,
+        additional_info=None
+        ):
+    """
+    Save complete checkpoint: model + optimizer + scheduler + tokenizer
+    Fast and distributed-training safe
+    """
+
+    if accelerator.is_main_process:
+        # Create save directory
+        os.makedirs(save_path, exist_ok=True)
+        logger.info(f"💾 Saving complete checkpoint to: {save_path}")
+
+
+        model.save_pretrained(
+                save_path,
+                is_main_process=accelerator.is_main_process,
+                save_function=accelerator.save,
+                state_dict=accelerator.get_state_dict(model),
+                safe_serialization=True  # Use safetensors (faster & safer)
+        )
+
+        # 4. Save Tokenizer
+        if tokenizer is not None:
+            tokenizer.save_pretrained(save_path)
+
+        # 5. Save Training Info (step, epoch, metrics, etc.)
+        training_info = {
+                "step"         : additional_info.get("step", 0) if additional_info else 0,
+                "epoch"        : additional_info.get("epoch", 0) if additional_info else 0,
+                "best_metric"  : additional_info.get("best_metric") if additional_info else None,
+                "training_args": additional_info.get("training_args") if additional_info else None
+        }
+
+        with open(os.path.join(save_path, "training_info.json"), "w") as f:
+            json.dump(training_info, f, indent=2, default=str)
+
+        if logger:
+            logger.info(f"✅ Complete checkpoint saved successfully")
+            logger.info(f"   📁 Directory: {save_path}")
+            logger.info(f"   🏗️  Model: ✓")
+            logger.info(f"   🔤 Tokenizer: {'✓' if tokenizer else '✗'}")
+
+    # Synchronize all processes
+    accelerator.wait_for_everyone()
+    return True
 def training_step(
         model: torch.nn.Module,
         batch: dict[str, Any],
@@ -641,9 +689,9 @@ def main():
     try:
         sampler_train = BlueprintGroupedSampler(
                 batch_size=training_args.per_device_train_batch_size,
-                world_size= accelerator.num_processes,
                 lengths=train_dataset["length"],
                 n_images=train_dataset["n_of_images"],
+                seed=42
         )
         train_dataloader = DataLoader(
                 train_dataset,
@@ -677,6 +725,7 @@ def main():
         #         shuffle=shuffle
         # )
 
+
         eval_sampler = DistributedSampler(
                 eval_dataset,
                 num_replicas=accelerator.num_processes,
@@ -697,10 +746,11 @@ def main():
         logger.error(f"❌ Error creating data loaders: {e}")
         raise
 
-    #batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes
+    #batch
+    # _size_real = training_args.per_device_train_batch_size * accelerator.num_processes
 
     # CORREZIONE: Calcolo corretto degli step
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / training_args.gradient_accumulation_steps)
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / (training_args.gradient_accumulation_steps * accelerator.num_processes))
     if training_args.max_train_steps is None:
         training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
     else:
@@ -879,7 +929,7 @@ def main():
     starting_epoch = 0
     resume_step = None
     completed_steps = 0
-
+    best_model_state = None
     if training_args.resume_from_checkpoint:
         accelerator.load_state(training_args.resume_from_checkpoint)
         accelerator.print(f"Resumed from checkpoint: {training_args.resume_from_checkpoint}")
@@ -910,7 +960,10 @@ def main():
                 else train_dataloader
         )
 
+
         for step, batch in enumerate(active_dataloader):
+            if accelerator.is_main_process:
+                logger.info(f"||||Step {step + 1} / {len(active_dataloader)} ||||")
             # Training step
             if training_args.debug:
                 pixel_values = batch['pixel_values']
@@ -923,8 +976,6 @@ def main():
                     accelerator=accelerator,
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps
             )
-
-
 
             # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
@@ -959,17 +1010,17 @@ def main():
 
             # === EVALUATION DURANTE I STEPS (VERSIONE SICURA) ===
             if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
-                logger.info(f"Starting evaluation at step {completed_steps}")
-
+                if accelerator.is_main_process:
+                    logger.info(f"Starting evaluation at step {completed_steps}")
                 # CRITICAL: Sincronizza PRIMA della valutazione
                 try:
-                    safe_wait_for_everyone_simple(accelerator=accelerator)
-
                     # Valutazione con gestione errori robusta
                     perplexity, eval_loss = None, None
                     try:
                         perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-                        logger.info(f"Evaluation completed: perplexity={perplexity}, eval_loss={eval_loss}")
+
+                        if accelerator.is_main_process:
+                            logger.info(f"Evaluation completed: perplexity={perplexity}, eval_loss={eval_loss}")
                     except Exception as eval_error:
                         logger.error(f"Evaluation failed at step {completed_steps}: {eval_error}")
                         perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
@@ -983,32 +1034,51 @@ def main():
                                 "step"      : completed_steps,
                         }, step=completed_steps)
 
-                    # Salvataggio del miglior modello (SOLO MAIN PROCESS)
-                    if accelerator.is_main_process and perplexity is not None and perplexity != float('inf'):
+                    if perplexity is not None and perplexity != float('inf'):
                         if best_metric is None or best_metric > perplexity:
                             best_metric = perplexity
                             best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
 
-                            try:
-                                # Assicurati che la directory esista
-                                checkpoint_save_with_sync(accelerator=accelerator,
-                                                          save_path=best_metric_checkpoint)
+                            # Clear previous best model state to free memory
+                            if best_model_state is not None:
+                                del best_model_state
 
-                                logger.info(f"New best metric: {best_metric} at step {completed_steps}")
-                                logger.info(f"Saved to: {best_metric_checkpoint}")
-                            except Exception as save_error:
-                                logger.error(f"Failed to save best checkpoint: {save_error}")
+                            # Get state dict and move to CPU
+                            unwrapped_model = accelerator.unwrap_model(model)
+                            best_model_state = {k: v.cpu() for k, v in unwrapped_model.state_dict().items()}
 
+                            checkpoint_info = {
+                                    "step"       : completed_steps,
+                                    "epoch"      : epoch,
+                                    "best_metric": best_metric,
+                                    "perplexity" : perplexity,
+                                    "eval_loss"  : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item()
+                            }
 
-                    # Sincronizza DOPO il salvataggio
                     safe_wait_for_everyone_simple(accelerator=accelerator)
+                    model.train()  # Assicurati che il modello sia in modalità train dopo la valutazione
+
                 except Exception as sync_error:
                     logger.error(f"Synchronization error during evaluation: {sync_error}")
-                    # Non interrompere il training per errori di sincronizzazione
-                    continue
 
         # === EVALUATION FINE EPOCA (VERSIONE SICURA) ===
         logger.info(f"Starting end-of-epoch evaluation for epoch {epoch}")
+        # For saving later, create a temporary model:
+        if best_model_state is not None:
+            # Create temporary model for saving
+            temp_model = accelerator.unwrap_model(model)
+            temp_model.load_state_dict({k: v.cuda() for k, v in best_model_state.items()})
+
+            save_complete_checkpoint(
+                    model=temp_model,
+                    accelerator=accelerator,
+                    save_path=best_metric_checkpoint,
+                    tokenizer=tokenizer,
+                    logger=logger,
+                    additional_info=checkpoint_info
+            )
+            del temp_model  # Clean up
+
 
         try:
             # Sincronizza prima della valutazione
@@ -1033,22 +1103,22 @@ def main():
                 }, step=completed_steps)
 
             # === CHECKPOINTING EPOCA (SOLO MAIN PROCESS) ===
-            if accelerator.is_main_process:
-                try:
-                    # Checkpoint periodici per epoca
-                    if (training_args.checkpointing_strategy == 'epoch' and
-                            isinstance(training_args.checkpointing_divider, int)):
-                        if (epoch + 1) % training_args.checkpointing_divider == 0:
-                            save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch + 1}")
-                            # Assicurati che la directory esista
+            checkpoint_save_with_sync(accelerator=accelerator)
+            try:
+                # Checkpoint periodici per epoca
+                if (training_args.checkpointing_strategy == 'epoch' and
+                        isinstance(training_args.checkpointing_divider, int)):
+                    if (epoch + 1) % training_args.checkpointing_divider == 0:
+                        save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch + 1}")
+                        # Assicurati che la directory esista
 
-                            checkpoint_save_with_sync(accelerator=accelerator,
-                                                      save_path=save_path)
+                        checkpoint_save_with_sync(accelerator=accelerator,
+                                                  save_path=save_path)
 
-                            logger.info(f"Saved periodic epoch checkpoint: {save_path} -- EPOCH {epoch + 1}")
+                        logger.info(f"Saved periodic epoch checkpoint: {save_path} -- EPOCH {epoch + 1}")
 
-                except Exception as save_error:
-                    logger.error(f"Failed to save epoch checkpoint: {save_error}")
+            except Exception as save_error:
+                logger.error(f"Failed to save epoch checkpoint: {save_error}")
 
             # Sincronizza dopo tutti i salvataggi
             safe_wait_for_everyone_simple(accelerator=accelerator)
@@ -1058,19 +1128,19 @@ def main():
             # Continua con l'epoca successiva
             continue
 
+
     logger.info("Epoch Training loop completed successfully!")
-
     # === EVALUATION FINALE ===
-    logger.info("Starting final evaluation...")
+    # logger.info("Starting final evaluation...")
 
-    # Carica il miglior checkpoint se richiesto
-    if training_args.load_best_model and best_metric_checkpoint and os.path.exists(best_metric_checkpoint):
-        try:
-            logger.info(f"Loading best checkpoint: {best_metric_checkpoint}")
-            accelerator.load_state(best_metric_checkpoint)
-            logger.info("Best checkpoint loaded successfully")
-        except Exception as load_error:
-            logger.error(f"Failed to load best checkpoint: {load_error}")
+    # # Carica il miglior checkpoint se richiesto
+    # if training_args.load_best_model and best_metric_checkpoint and os.path.exists(best_metric_checkpoint):
+    #     try:
+    #         logger.info(f"Loading best checkpoint: {best_metric_checkpoint}")
+    #         accelerator.load_state(best_metric_checkpoint)
+    #         logger.info("Best checkpoint loaded successfully")
+    #     except Exception as load_error:
+    #         logger.error(f"Failed to load best checkpoint: {load_error}")
 
     # Valutazione finale
     try:
