@@ -1103,22 +1103,19 @@ def main():
                 }, step=completed_steps)
 
             # === CHECKPOINTING EPOCA (SOLO MAIN PROCESS) ===
-            checkpoint_save_with_sync(accelerator=accelerator)
-            try:
-                # Checkpoint periodici per epoca
-                if (training_args.checkpointing_strategy == 'epoch' and
-                        isinstance(training_args.checkpointing_divider, int)):
-                    if (epoch + 1) % training_args.checkpointing_divider == 0:
-                        save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch + 1}")
-                        # Assicurati che la directory esista
 
-                        checkpoint_save_with_sync(accelerator=accelerator,
-                                                  save_path=save_path)
+            # Checkpoint periodici per epoca
+            if (training_args.checkpointing_strategy == 'epoch' and
+                    isinstance(training_args.checkpointing_divider, int)):
+                if (epoch + 1) % training_args.checkpointing_divider == 0:
+                    save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch + 1}")
+                    # Assicurati che la directory esista
 
-                        logger.info(f"Saved periodic epoch checkpoint: {save_path} -- EPOCH {epoch + 1}")
+                    checkpoint_save_with_sync(accelerator=accelerator,
+                                              save_path=save_path)
 
-            except Exception as save_error:
-                logger.error(f"Failed to save epoch checkpoint: {save_error}")
+                    logger.info(f"Saved periodic epoch checkpoint: {save_path} -- EPOCH {epoch + 1}")
+
 
             # Sincronizza dopo tutti i salvataggi
             safe_wait_for_everyone_simple(accelerator=accelerator)

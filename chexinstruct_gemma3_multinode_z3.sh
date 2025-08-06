@@ -1,27 +1,22 @@
 #!/usr/bin/env bash
 #SBATCH -A NAISS2024-5-577
 #SBATCH -p alvis
-#SBATCH -N 4                        # 4 nodes
+#SBATCH -N 4                        # two nodes
 #SBATCH --ntasks-per-node=4          # one task per GPU
-#SBATCH --gpus-per-node=A100:4       # 4 GPUs per node
+#SBATCH --gpus-per-node=A40:4       # 4 GPUs per node
 #SBATCH --cpus-per-task=16
-#SBATCH -t 1-18:00:00
-#SBATCH -J "gemma3_4MN_training"
-#SBATCH --error=_TRAIN-FT_%J.err
-#SBATCH --output=_TRAIN-FT_%J.out
+#SBATCH -t 0-06:00:00               # Aumenta il timeout
+#SBATCH -J "gemma3_MN_TRAIN_lora_vanilla"
+#SBATCH --error=_TRAIN_%J.err
+#SBATCH --output=_TRAIN_%J.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
 set -euo pipefail
-# Cleanup function to terminate processes and reset GPUs
+
 echo "=== Gemma3 Multi-Node Training (Direct SLURM Method) ==="
 echo "Job ID: $SLURM_JOB_ID"
 echo "Nodes: $SLURM_JOB_NODELIST"
 
-
-
-# =============================================================================
-# NETWORK INTERFACE DETECTION USING ASSIGNED RESOURCES
-# =============================================================================
 
 # Show all available interfaces
 echo "Available network interfaces:"
@@ -54,7 +49,6 @@ else
     done
 fi
 
-
 # =============================================================================
 # NETWORK ENVIRONMENT CONFIGURATION
 # =============================================================================
@@ -80,20 +74,22 @@ echo "MASTER_PORT=$MASTER_PORT"
 echo "WORLD_SIZE=$WORLD_SIZE"
 # Configure NCCL with detected interface
 export NCCL_SOCKET_IFNAME="$NETWORK_INTERFACE"
-export NCCL_DEBUG=INFO  # Show detailed network info
-export NCCL_TIMEOUT=1800
+export NCCL_IB_DISABLE=0
+# TORCH
+export TORCH_DISTRIBUTED_DEBUG=INFO
+# =============================================================================
+
+# Move to project directory
+cd /mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick || { echo "Workspace not found"; exit 1; }
+
+# Load environment
+source activateEnv.sh
+echo "✓ Environment activated"
+
+# Disable distributed debug to reduce noise
+
 
 export WANDB_MODE=online
-export NCCL_TREE_THRESHOLD=0  # Forza collective algorithms più stabili
-export NCCL_P2P_DISABLE=0     # Abilita P2P per migliori performance
-export NCCL_IB_TIMEOUT=22     # Aumenta timeout IB
-export NCCL_BLOCKING_WAIT=1   # Usa blocking wait per stabilità
-export TORCH_DISTRIBUTED_DEBUG=DETAIL  # Più dettagli per debug
-
-# Configurazioni PyTorch per stabilità
-export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
-export CUDA_LAUNCH_BLOCKING=0
-
 ######################
 ### Verify Training Files
 ######################
@@ -104,30 +100,23 @@ export CUDA_LAUNCH_BLOCKING=0
 ### Launch Training (EXACT SAME METHOD AS DIAGNOSTIC)
 ######################
 
-
 echo "=== Launching Training with Direct SLURM (Working Method) ==="
 # PARAMS for the training script
 export ACCELERATE_CONFIG_FILE="deepspeed/ds_zero3_config.yaml"
+# Use the EXACT same srun pattern that worked in diagnostics
 
 export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64"
-mkdir -p "./reports/finetune_gemma_findings_zero3_trainer_lora64"
+mkdir -p "./reports/finetune_gemma_findings_zero3_trainer_lora64_twonode_dbg"
 mkdir -p "$OUTPUT_DIR"  # Assicurati che la directory di output esista
 
 
 export BATCH=4
 export EPOCHS=4
-export EVAL_STEPS=64  # Riduci evaluation steps per testare più spesso
+export EVAL_STEPS=16  # Riduci evaluation steps per testare più spesso
 export GRADIENT_ACCUMULATION_STEPS=4  # Aumenta per compensare batch size ridotta
 
-# Configurazioni HuggingFace
-export TRANSFORMERS_VERBOSITY=warning  # Riduci verbosity
-export HF_HUB_ENABLE_HF_TRANSFER=1
-export HF_HUB_DISABLE_SYMLINKS_WARNING=1
-export HF_DATASETS_OFFLINE=1
-export HF_HUB_OFFLINE=1
-
 # Aggiungi timeout per processi bloccati
-timeout 10800 srun bash -c '
+srun bash -c '  # 3 ore di timeout
   export RANK=$SLURM_PROCID
   export LOCAL_RANK=$SLURM_LOCALID
   export WORLD_SIZE='"$WORLD_SIZE"'
@@ -137,13 +126,10 @@ timeout 10800 srun bash -c '
   echo "[Rank $RANK] Starting training on $(hostname) with LOCAL_RANK=$LOCAL_RANK"
   echo "WORLD_SIZE = $WORLD_SIZE"
   echo "OUTPUT_DIR = '"$OUTPUT_DIR"'"
+
   # Crea directory di output per questo processo
   mkdir -p '"$OUTPUT_DIR"'
-  # ✅ ADD: Wait for all processes to reach this point
-  sleep $((RANK * 2))  # Stagger startup to prevent race conditions
 
-  # ✅ ADD: Verify GPU is available
-  nvidia-smi -L || { echo "GPU not available on $(hostname)"; exit 1; }
 
   # Run the training script directly (no accelerate launcher)
   python src/finetune/finetune_accelerated_v2.py \
@@ -160,7 +146,7 @@ timeout 10800 srun bash -c '
         --report_to wandb \
         --preprocessing_num_workers 1 \
         --weight_decay 0.0001 \
-        --warmup_ratio 0.05 \
+        --warmup_ratio 0.1 \
         --model_max_length 1500 \
         --lora_enable true \
         --lora_alpha 64 \
@@ -177,6 +163,7 @@ timeout 10800 srun bash -c '
         --debug false
 '
 
+
 exit_code=$?
 echo "Training completed with exit code: $exit_code"
 
@@ -184,4 +171,6 @@ echo "Training completed with exit code: $exit_code"
 echo "=== Final cleanup ==="
 # Termina processi rimasti
 pkill -f "python.*finetune" || true
+# Reset GPU se necessario
+nvidia-smi --gpu-reset || true
 exit $exit_code
