@@ -27,7 +27,7 @@
 *.DS_Store
 bash/.DS_Store
 /bash
-.*
+
 /data/mimic-nle/query/dev-query.json
 /data/mimic-nle/mimic-nle-dev.json
 /data/mimic-nle/mimic-nle-test.json
