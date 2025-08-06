@@ -1,0 +1,3 @@
+[submodule "modules/cxr-metrics"]
+	path = modules/cxr-metrics
+	url = https://github.com/rajpurkarlab/CXR-Report-Metric.git
