@@ -31,7 +31,7 @@ Each sample has the following fields:
 
 Some samples may be **text-only** (no image), others are **multimodal** (image + instruction → response).
 
-## 🧪 Example Sample
+## Example Sample
 
 ```python
 sample = dataset["train"][0]

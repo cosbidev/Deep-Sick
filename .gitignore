@@ -24,9 +24,14 @@
 /Users/filruff/Desktop/PHD/PROGETTI
 
 .idea/workspace.xml
-.DS_Store
-.DS_Store
-.idea/workspace.xml
-bash/.DS_Store
+*.DS_Store
 bash/.DS_Store
 /bash
+
+/data/mimic-nle/query/dev-query.json
+/data/mimic-nle/mimic-nle-dev.json
+/data/mimic-nle/mimic-nle-test.json
+/data/mimic-nle/mimic-nle-train.json
+/data/mimic-nle/query/test-query.json
+/data/mimic-nle/query/train-query.json
+/activateEnv.sh

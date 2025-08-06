@@ -26,9 +26,13 @@ class GemmaCollator(VisionLanguageDataCollator):
             enable_image_cache: bool = True,
             cache_size: int = 10000,
             use_fast_validation: bool = True,
+            image_tkn: str = "<start_of_image>",
             **kwargs: Any
     ):
 
+
+
+        self.image_tkn = image_tkn
         self.system = False
         self.max_l = 0
         self.max_length = max_length
@@ -50,7 +54,11 @@ class GemmaCollator(VisionLanguageDataCollator):
                                                   **kwargs)
         processor.tokenizer.pad_token = processor.tokenizer.eos_token
         processor.tokenizer.padding_side = "right"
+        #processor.image_processor.size = {"height": 512, "width": 512} TODO Adjust size if needed (512x512)
         super().__init__(processor)
+
+
+
 
     @staticmethod
     def _format_conversation(example, max_images=2):
@@ -273,6 +281,46 @@ class GemmaCollator(VisionLanguageDataCollator):
                 'formatted_messages': formatted_messages
         }
 
+
+    def adjust_image_tokens(self, prompt: str, image_count: int) -> str:
+        """
+        Adjusts the number of <start_of_image> tokens in the given prompt
+        to match the specified image_count.
+
+        Args:
+            prompt (str): The original prompt text containing <start_of_image> tokens.
+            image_count (int): The number of images.
+
+        Returns:
+            str: The modified prompt with the correct number of <start_of_image> tokens.
+        """
+        token = self.image_tkn
+        current_count = prompt.count(token)
+
+        if current_count == image_count:
+            return prompt  # No change needed
+
+        # Remove excess tokens if there are too many
+        if current_count > image_count:
+            # Keep only the first occurrence and add (image_count - 1) more
+            parts = prompt.split(token, maxsplit=current_count)
+            # Reconstruct prompt: first part + repeated token * image_count + remaining parts
+            new_prompt = parts[0] + (token * image_count) + ''.join(parts[1:])
+            return new_prompt
+
+        # Add tokens if there are too few
+        if current_count < image_count:
+            missing = image_count - current_count
+            # Insert the missing tokens right after the first occurrence
+            if current_count == 0:
+                # No token in prompt: prepend them at the beginning
+                return (token * image_count) + prompt
+            else:
+                first_index = prompt.find(token) + len(token)
+                new_prompt = prompt[:first_index] + (token * missing) + prompt[first_index:]
+                return new_prompt
+
+
     def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         """Process batch for LLaVA - mantiene la logica originale"""
         text_prompt = [el.get('texts', None) for el in batch]
@@ -290,6 +338,9 @@ class GemmaCollator(VisionLanguageDataCollator):
             text_prompt = [text for text, valid in zip(text_prompt, boolean_ix) if valid]
             images = [im for im, valid in zip(images, boolean_ix) if valid]
 
+        # Last check for not aligned text prompts and images
+        lens = [len(im) for im in images]
+        text_prompt = [self.adjust_image_tokens(t, img_count) for t,img_count in zip(text_prompt,lens)]
 
         # Tokenize the texts and process the images
         batch = self.processor(

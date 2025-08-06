@@ -8,12 +8,13 @@ This version addresses the "torch.cat(): expected a non-empty list of Tensors" e
 import math
 import warnings
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional, Any, Callable
 from tqdm import tqdm
 import os
 import json
 import logging
-from accelerate.utils import DummyOptim, DummyScheduler, set_seed
+from accelerate.utils import DummyOptim, DummyScheduler
 import torch
 import transformers
 from transformers import (
@@ -33,10 +34,10 @@ import sys
 sys.path.extend(["./src", './'])
 from src.dataset import load_parquet_image_dataset
 from src.models import get_collator, configure_model_for_training
+from src.distributed import checkpoint_save_with_sync, safe_wait_for_everyone_simple
 from util_finetune import rank0_print, BlueprintGroupedSampler, evaluate
-
+from torch.utils.data.distributed import DistributedSampler
 # Environment setup
-os.environ["HF_TOKEN"] = "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"
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
 os.environ["HF_DATASETS_CACHE"] = cache_dir
 os.environ["HF_HOME"] = cache_dir
@@ -143,14 +144,24 @@ class CustomTrainingArguments:
 
     # Training configuration
     max_train_steps: Optional[int] = field(default=None, metadata={"help": "Total number of training steps to perform. If provided, overrides num_train_epochs."})
-    num_warmup_steps: int = field(
-            default=1000,
-            metadata={"help": "Number of warmup steps for the learning rate scheduler."}
-    )
-    lr_scheduler_type: str = field(default="linear", metadata={"help": "The scheduler type to use."})
+    bf16: bool = field(default=False, metadata={"help": "Whether to use bfloat16 mixed precision."})
+
+
+    # Scheduler configuration
+    lr_scheduler_type: str = field(default="linear", metadata={"help": "The scheduler type to use. Options: linear, cosine, cosine_with_restarts, polynomial, constant, constant_with_warmup, or cyclic."})
+    warmup_min_lr: float = field(default=0.0, metadata={"help": "Warmup minimum learning rate."})
+    num_warmup_steps: int = field(default=None, metadata={"help": "Number of warmup steps for the learning rate scheduler."})
+    cycle_min_lr: float = field(default=1e-7, metadata={"help": "Minimum learning rate for cyclical learning rate scheduler."})
+    total_num_steps: Optional[int] = field( default=None, metadata={"help": "Total number of steps for the learning rate scheduler."})
+    warmup_ratio: float = field(default=0.01, metadata={"help": "Warmup ratio for the learning rate scheduler."})
+
+    # Optimizer configuration
+    adam_beta1: float = field(default=0.9, metadata={"help": "Beta1 for AdamW optimizer."})
+    adam_beta2: float = field(default=0.99, metadata={"help": "Beta2 for AdamW optimizer."})
+    adam_epsilon: float = field(default=1e-8, metadata={"help": "Epsilon for AdamW optimizer."})
+
 
     # Multimodal training configuration
-    freeze_multimodal: bool = field(default=True, metadata={"help": "Whether to freeze the multimodal model."})
     finetune_vision_layers: bool = field(default=False, metadata={"help": "Whether to finetune the vision layers."})
     finetune_language_layers: bool = field(default=True, metadata={"help": "Whether to finetune the language layers."})
     finetune_attention_modules: bool = field(default=True, metadata={"help": "Whether to finetune the attention modules."})
@@ -161,19 +172,19 @@ class CustomTrainingArguments:
     gradient_accumulation_steps: int = field(default=1, metadata={"help": "Number of updates steps to accumulate before performing a backward/update pass."})
 
     # Checkpointing and saving
-    checkpointing_steps: Optional[str] = field(default='none', metadata={"help": "Checkpointing steps, can be 'epoch', 'steps', or a number of steps."})
-    save_every_n_epochs: Optional[int] = field(default=None, metadata={"help": "Save every n epochs."})
+    checkpointing_strategy: Optional[str] = field(default='epoch', metadata={"help": "Checkpointing steps, can be 'epoch', 'steps', or a number of steps."})
+    checkpointing_divider: Optional[int] = field(default=1, metadata={"help": "Checkpointing steps, can be 'epoch', 'steps', or a number of steps."})
     resume_from_checkpoint: Optional[str] = field(default=None, metadata={"help": "Path to checkpoint to resume from."})
 
-
     # Evaluation and best model
-    load_best_model: bool = field(default=False, metadata={"help": "Whether to load the best model at the end of training."})
+    load_best_model: bool = field(default=True, metadata={"help": "Whether to load the best model at the end of training."})
     eval_steps: int = field(default=None, metadata={"help": "Evaluate every n steps."})
     # W&B integration
     report_to: str = field(default="wandb")
     with_tracking: bool = field(default=True, metadata={"help": "Whether to use tracking for the training run."})
     lr: float = field(default=2e-4, metadata={"help": "Learning rate for the optimizer."})
     debug: bool = field(default=False, metadata={"help": "Whether to run in debug mode with fewer epochs and smaller batch size."})
+
     @property
     def train_batch_size(self) -> int:
         """Total effective batch size for training."""
@@ -191,7 +202,6 @@ def initialize_accelerator_safely(training_args):
     import time
     import random
 
-    # Check if we're using torchrun (recommended approach)
     if "LOCAL_RANK" in os.environ and "RANK" in os.environ:
         print("🔄 Detected TorchRun environment, using simple accelerator initialization...")
 
@@ -200,6 +210,8 @@ def initialize_accelerator_safely(training_args):
                 gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                 log_with=training_args.report_to if training_args.with_tracking else None,
                 project_dir=training_args.output_dir,
+                mixed_precision="bf16" if training_args.bf16 else "fp16"
+
         )
         print("✅ TorchRun accelerator initialized successfully")
         return accelerator
@@ -219,9 +231,11 @@ def initialize_accelerator_safely(training_args):
                 time.sleep(delay)
 
             accelerator = Accelerator(
+                    num_processes=4,
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps,
                     log_with=training_args.report_to if training_args.with_tracking else None,
                     project_dir=training_args.output_dir,
+                    mixed_precision="bf16" if training_args.bf16 else "fp16"
             )
 
             print("✅ Accelerator initialized successfully")
@@ -373,11 +387,6 @@ def setup_model_and_config(model_args, training_args, data_args):
     if training_args.lora_enable:
         print("🔄 Applying LoRA configuration...")
 
-
-        # Debug: Check model state before LoRA
-        #print("📊 Model state BEFORE LoRA:")
-        #debug_tensor_shapes(model, "BEFORE_LORA: ")
-
         model = configure_model_for_training(
                 model,
                 strategy=training_args.peft_strategy,
@@ -403,9 +412,9 @@ def setup_model_and_config(model_args, training_args, data_args):
 
         print(f"✅ LoRA applied successfully with {len(trainable_params)} trainable parameter groups")
 
-    # Disable gradient checkpointing to avoid conflicts with DeepSpeed
-    if hasattr(model, 'gradient_checkpointing_enable'):
-        model.gradient_checkpointing_disable()
+    # # Disable gradient checkpointing to avoid conflicts with DeepSpeed
+    # if hasattr(model, 'gradient_checkpointing_enable'):
+    #     model.gradient_checkpointing_disable()
 
     # Set hidden size for compatibility
     try:
@@ -490,7 +499,6 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
     print(f"📊 Created {len(optimizer_grouped_parameters)} parameter groups with {total_params_in_groups} total parameters")
 
 
-
     optimizer_cls = (
             torch.optim.AdamW
             if accelerator.state.deepspeed_plugin is None
@@ -499,10 +507,11 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
     )
     optimizer = optimizer_cls(optimizer_grouped_parameters,
                               lr=training_args.learning_rate,
-                              eps=1e-8,
-                              betas=(0.9, 0.999))
+                              eps=training_args.adam_epsilon,
+                              betas=(training_args.adam_beta1, training_args.adam_beta2))
 
     # Create learning rate scheduler
+
     if (
             accelerator.state.deepspeed_plugin is None
             or "scheduler" not in accelerator.state.deepspeed_plugin.deepspeed_config
@@ -510,8 +519,9 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
         lr_scheduler = get_scheduler(
                 name=training_args.lr_scheduler_type,
                 optimizer=optimizer,
-                num_warmup_steps=training_args.num_warmup_steps,
-                num_training_steps=training_args.max_train_steps,
+                num_warmup_steps=training_args.num_warmup_steps * accelerator.num_processes,
+                num_training_steps=training_args.max_train_steps * accelerator.num_processes,
+                scheduler_specific_kwargs = dict(num_cycles=training_args.num_train_epochs * 2)
         )
     else:
         lr_scheduler = DummyScheduler(
@@ -537,8 +547,54 @@ def call_forward_dummy(dummy_inputs, model, device="cuda"):
     return loss
 
 
+def save_complete_checkpoint(
+        model, accelerator,
+        save_path, tokenizer=None, logger=None,
+        additional_info=None
+        ):
+    """
+    Save complete checkpoint: model + optimizer + scheduler + tokenizer
+    Fast and distributed-training safe
+    """
+
+    if accelerator.is_main_process:
+        # Create save directory
+        os.makedirs(save_path, exist_ok=True)
+        logger.info(f"💾 Saving complete checkpoint to: {save_path}")
 
 
+        model.save_pretrained(
+                save_path,
+                is_main_process=accelerator.is_main_process,
+                save_function=accelerator.save,
+                state_dict=accelerator.get_state_dict(model),
+                safe_serialization=True  # Use safetensors (faster & safer)
+        )
+
+        # 4. Save Tokenizer
+        if tokenizer is not None:
+            tokenizer.save_pretrained(save_path)
+
+        # 5. Save Training Info (step, epoch, metrics, etc.)
+        training_info = {
+                "step"         : additional_info.get("step", 0) if additional_info else 0,
+                "epoch"        : additional_info.get("epoch", 0) if additional_info else 0,
+                "best_metric"  : additional_info.get("best_metric") if additional_info else None,
+                "training_args": additional_info.get("training_args") if additional_info else None
+        }
+
+        with open(os.path.join(save_path, "training_info.json"), "w") as f:
+            json.dump(training_info, f, indent=2, default=str)
+
+        if logger:
+            logger.info(f"✅ Complete checkpoint saved successfully")
+            logger.info(f"   📁 Directory: {save_path}")
+            logger.info(f"   🏗️  Model: ✓")
+            logger.info(f"   🔤 Tokenizer: {'✓' if tokenizer else '✗'}")
+
+    # Synchronize all processes
+    accelerator.wait_for_everyone()
+    return True
 def training_step(
         model: torch.nn.Module,
         batch: dict[str, Any],
@@ -570,7 +626,7 @@ def main():
     # Parse arguments with flexible handling
     model_args, data_args, training_args, remaining = parse_args_flexible()
 
-    print("🚀 Starting DeepSpeed Zero-2 Training with LoRA")
+    print("🚀 Starting DeepSpeed Zero-[2/3] Training with LoRA")
     print("=" * 60)
 
     # Setup logging
@@ -583,7 +639,7 @@ def main():
         rank0_print(f"model_args = {vars(model_args)}\n")
         rank0_print(f"data_args = {vars(data_args)}\n")
         rank0_print(f"training_args = {vars(training_args)}\n")
-        
+
 
     # Set seed for reproducibility
     if training_args.seed is not None:
@@ -592,10 +648,10 @@ def main():
     # Load datasets
     print("🔄 Loading datasets...")
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
-    # if training_args.debug:
-    #     # Reduce dataset size for debugging purposes
-    #     train_dataset = train_dataset.select(range(1000))
-    #     eval_dataset = eval_dataset.select(range(1000))
+    if training_args.debug:
+        # Reduce dataset size for debugging purposes
+        train_dataset = train_dataset.select(range(10000))
+        eval_dataset = eval_dataset.select(range(1000))
 
 
     print("✅ Datasets loaded successfully")
@@ -607,9 +663,6 @@ def main():
             training_args=training_args,
             data_args=data_args
     )
-
-
-
     print("✅ Model and LoRA setup completed")
     # Get collator and tokenizer
     print("🔄 Setting up collator...")
@@ -618,52 +671,28 @@ def main():
             padding_side="left",
             token=hf_token
     )
+
     processor = collator.processor
     tokenizer = collator.tokenizer if hasattr(collator, 'tokenizer') else processor
     print("✅ Collator setup completed")
 
     # NOW initialize accelerator with DeepSpeed config
-    print("🔄 Initializing Accelerator with DeepSpeed...")
-
-
-    # Initialize accelerator with proper DeepSpeed configuration
-    # accelerator = Accelerator(
-    #         log_with=training_args.report_to if training_args.with_tracking else None,
-    #         project_dir=training_args.output_dir,
-    #         gradient_accumulation_steps=training_args.gradient_accumulation_steps,
-    # 
-    # )
     accelerator = initialize_accelerator_safely(training_args=training_args)
     print("✅ Accelerator initialized successfully")
 
     # Calculate training steps
-    batch_size_real = training_args.per_device_train_batch_size * accelerator.num_processes
-    num_update_steps_per_epoch = math.ceil(len(train_dataset) / (batch_size_real * training_args.gradient_accumulation_steps))
-    if training_args.max_train_steps is None:
-        training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
-    else:
-        training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
-
-
-    if not training_args.eval_steps:
-        training_args.eval_steps = int(num_update_steps_per_epoch / 2)
+    if accelerator.num_processes == 0:
+        raise RuntimeError("❌ No processes found. Please ensure you are running with multiple GPUs or in a distributed environment.")
+    print(f"🔄 Accelerator initialized with {accelerator.num_processes} processes")
     # Create data loaders BEFORE accelerator initialization
     print("🔄 Creating data loaders...")
     try:
         sampler_train = BlueprintGroupedSampler(
                 batch_size=training_args.per_device_train_batch_size,
-                world_size= accelerator.num_processes,
                 lengths=train_dataset["length"],
                 n_images=train_dataset["n_of_images"],
+                seed=42
         )
-
-        # sampler_val = BlueprintGroupedSampler(
-        #         batch_size=training_args.per_device_eval_batch_size,
-        #         world_size= accelerator.num_processes,
-        #         lengths=eval_dataset["length"],
-        #         n_images=eval_dataset["n_of_images"],
-        # )
-
         train_dataloader = DataLoader(
                 train_dataset,
                 sampler=sampler_train,
@@ -672,49 +701,130 @@ def main():
                 batch_size=training_args.per_device_train_batch_size,
                 pin_memory=True
         )
+        # # Prima di creare il DataLoader:
+        # if accelerator.num_processes > 1:
+        #     train_sampler = DistributedSampler(
+        #             train_dataset,
+        #             num_replicas=accelerator.num_processes,
+        #             rank=accelerator.process_index,
+        #             shuffle=True
+        #     )
+        #
+        # else:
+        #     train_sampler = None
+        #     eval_sampler = None
+        #     shuffle = True
+        #
+        # train_dataloader = DataLoader(
+        #         train_dataset,
+        #         sampler=train_sampler,
+        #         collate_fn=collator,
+        #         drop_last=True,
+        #         batch_size=training_args.per_device_train_batch_size,
+        #         pin_memory=True,
+        #         shuffle=shuffle
+        # )
+
+
+        eval_sampler = DistributedSampler(
+                eval_dataset,
+                num_replicas=accelerator.num_processes,
+                rank=accelerator.process_index,
+                shuffle=False
+        )
         eval_dataloader = DataLoader(
                 eval_dataset,
-                # sampler=sampler_val,
+                sampler=eval_sampler,
                 collate_fn=collator,
                 drop_last=True,
-                pin_memory=True,
                 batch_size=training_args.per_device_eval_batch_size,
+                pin_memory=True,
+                shuffle=False
         )
         print("✅ Data loaders created successfully")
     except Exception as e:
         logger.error(f"❌ Error creating data loaders: {e}")
         raise
 
+    #batch
+    # _size_real = training_args.per_device_train_batch_size * accelerator.num_processes
+
+    # CORREZIONE: Calcolo corretto degli step
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / (training_args.gradient_accumulation_steps * accelerator.num_processes))
+    if training_args.max_train_steps is None:
+        training_args.max_train_steps = int(training_args.num_train_epochs * num_update_steps_per_epoch)
+    else:
+        training_args.num_train_epochs = math.ceil(training_args.max_train_steps / num_update_steps_per_epoch)
+
+    if training_args.num_warmup_steps is None:
+        if training_args.warmup_ratio is not None:
+
+            training_args.num_warmup_steps = int(training_args.warmup_ratio * training_args.max_train_steps)
+        else:
+            # Default 1% del totale degli step di training (non per epoca!)
+            training_args.num_warmup_steps = int(training_args.max_train_steps * 0.02)
+    if not training_args.eval_steps:
+        training_args.eval_steps = int(num_update_steps_per_epoch / 8)
+
+    # Debug dettagliato dei calcoli
+    print(f"   Raw calculation: {len(train_dataloader)} ÷ {training_args.gradient_accumulation_steps} = {len(train_dataloader) / training_args.gradient_accumulation_steps}")
+    print(f"   Ceiled result: {math.ceil(len(train_dataloader) / training_args.gradient_accumulation_steps)}")
+
+    if accelerator.is_main_process:
+        print(f"📊 TRAINING PRE-ACCELERATOR PREPARE DEBUG:")
+        print(f"   Train dataset size: {len(train_dataloader)}")
+        print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_train_batch_size}")
+        print(f"   Eval dataset size: {len(eval_dataloader)}")
+        print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_eval_batch_size}")
+        print(f"   Batch size per device ( Train, Eval ): {training_args.per_device_train_batch_size}, {training_args.per_device_eval_batch_size}")
+        print(f"   Gradient accumulation steps: {training_args.gradient_accumulation_steps}")
+        print(f"   Total number of processes: {accelerator.num_processes}")
+        print(f"   Total number of GPUs: {torch.cuda.device_count()}")
+        print(f"   Total number of training epochs: {training_args.num_train_epochs}")
+        print(f"   Total number of warmup steps: {training_args.num_warmup_steps}")
+        print(f"   Total number of training steps x Epoch: {num_update_steps_per_epoch}")
 
     # Create optimizer with proper parameter grouping BEFORE accelerator.prepare()
-    print("🔄 Creating optimizer...")
     optimizer, lr_scheduler = create_optimizers_with_parameter_groups(model, training_args, accelerator)
     print("✅ Optimizer created successfully")
 
-
     # Initialize tracking if enabled
     if training_args.with_tracking:
+        # Config personalizzato per W&B
+        wandb_config = {
+                "model"        : model_args.model_name_or_path,
+                "batch_size"   : training_args.per_device_train_batch_size,
+                "accumulation" : training_args.gradient_accumulation_steps,
+                "learning_rate": training_args.learning_rate,
+                "lora_r"       : training_args.lora_r,
+                "lora_alpha"   : training_args.lora_alpha,
+                "epochs"       : training_args.num_train_epochs,
+                "processes"    : accelerator.num_processes
+        }
+
+
         accelerator.init_trackers(
-                project_name=f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}',
+                project_name=f'{model_args.model_name_or_path.split("/")[-1]}-multinode',
+                config=wandb_config,
+                init_kwargs={
+                        "wandb": {
+                                "name": f'gemma3-multinode-{datetime.now().strftime("%m%d-%H%M")}',
+                                "tags": ["multinode", "gemma3", "lora", "deepspeed"]
+                        }
+                }
         )
 
     print("✅ Accelerator initialized successfully")
-
     # Final parameter check before prepare
     print("📊 Final parameter check before accelerator.prepare():")
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     print(f"   Trainable parameters: {len(trainable_params)}")
 
     # # Verify optimizer has parameters
-    # total_optimizer_params = sum(len(group['params']) for group in optimizer.param_groups)
-    # print(f"   Optimizer parameter count: {total_optimizer_params}")
-    #
-    # if total_optimizer_params == 0:
-    #     raise RuntimeError("❌ Optimizer has no parameters!")
-    # CRITICAL: Prepare everything with accelerator in the correct order
     print("🔄 Preparing model, optimizer, and data loaders with accelerator...")
 
     try:
+        print("🔄 Enabling gradient checkpointing if supported by the model...")
         hasattr(model, 'gradient_checkpointing_enable')
         model.config.use_cache = False
         model.gradient_checkpointing_enable(dict(use_reentrant=False))
@@ -723,6 +833,7 @@ def main():
         logger.warning("This might be due to model not supporting gradient checkpointing or already enabled.")
         # Continue without enabling gradient checkpointing if it fails
     try:
+
         # Prepare in the correct order: model first, then optimizer, then data loaders
         model, optimizer, lr_scheduler, train_dataloader, eval_dataloader = accelerator.prepare(
                 model,
@@ -731,18 +842,38 @@ def main():
                 train_dataloader,
                 eval_dataloader,
         )
-
-        # Uso:
-        loss = call_forward_dummy(model.module.dummy_inputs, model)
-        print("LOSS GRADIENT:", loss.requires_grad)
-
         print("✅ All components prepared successfully with accelerator")
+
     except Exception as e:
         logger.error(f"❌ Error during accelerator.prepare(): {e}")
         logger.error("This is likely due to empty parameter groups or incompatible configurations")
         raise
-    # === LoRA + Gradient Checkpointing Safe Enable ===
 
+    if accelerator.is_main_process:
+        print(f"📊 TRAINING CALCULATION VERIFICATION:")
+        print("AFTER-ACCELERATOR PREPARE DEBUG:")
+        print(f"   Train dataset size: {len(train_dataloader)}")
+        print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_train_batch_size}")
+        print(f"   Eval dataset size: {len(eval_dataloader)}")
+        print(f"   Train size computed: ( N_batch * B_size ) {len(train_dataloader) * training_args.per_device_eval_batch_size}")
+        print(f"   Batch size per device ( Train, Eval ): {training_args.per_device_train_batch_size}, {training_args.per_device_eval_batch_size}")
+        print(f"   Gradient accumulation steps: {training_args.gradient_accumulation_steps}")
+        print(f"   Total number of processes: {accelerator.num_processes}")
+        print(f"   Total number of GPUs: {torch.cuda.device_count()}")
+        print(f"   Total number of training epochs: {training_args.num_train_epochs}")
+        print(f"   Total number of warmup steps: {training_args.num_warmup_steps}")
+        print(f"   Total number of training steps x Epoch: {num_update_steps_per_epoch}")
+
+
+        try:
+            logger.info(f"  Scheduler total steps = {training_args.max_train_steps}")
+            logger.info(f"  Scheduler warmup steps = {training_args.num_warmup_steps}")
+            if 'lr_scheduler' in locals():
+                scheduler_state = getattr(lr_scheduler, 'state_dict', lambda: {})()
+                logger.info(f"  Scheduler state keys: {list(scheduler_state.keys()) if scheduler_state else 'No state_dict available'}")
+        except Exception as e:
+            logger.warning(f"  Could not log scheduler details: {e}")
+    # === LoRA + Gradient Checkpointing Safe Enable ===
     if training_args.debug:
         # Debugging: Check if the dataloaders are correctly set up
         for i, b in tqdm(enumerate(train_dataloader), desc="Checking train dataloader batches", total=len(train_dataloader)):
@@ -768,11 +899,14 @@ def main():
                         print(f"   {key}: {type(value)} (not a tensor)")
 
 
-
     # Initialize W&B run name
     if training_args.report_to == "wandb" and accelerator.is_local_main_process:
-        run_name = f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}'
-        os.environ["WANDB_PROJECT"] = run_name
+        project_name = f'{model_args.model_name_or_path.split("/")[-1]}-FT'
+        run_name = f'{model_args.model_name_or_path.split("/")[-1]}-finetuning-{training_args.peft_strategy}-date-{datetime.now().strftime("%Y-%m-%d")}-epoch-{training_args.num_train_epochs}-bs-{training_args.per_device_train_batch_size}'
+        os.environ["WANDB_PROJECT"] = project_name  # project in W&B UI
+        os.environ["WANDB_RUN_NAME"] = run_name  # run name in W&B UI
+        os.environ["WANDB_NAME"] = run_name  # alternative alias for run name
+
 
 
     # Progress bar setup
@@ -780,19 +914,22 @@ def main():
     best_metric = None
     best_metric_checkpoint = None
 
-    # === Training Loop ===
-    logger.info("***** Running training *****")
-    logger.info(f"  Num examples = {len(train_dataset)}")
-    logger.info(f"  Num Epochs = {training_args.num_train_epochs}")
-    logger.info(f"  Instantaneous batch size per device = {training_args.per_device_train_batch_size}")
-    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {training_args.train_batch_size}")
-    logger.info(f"  Gradient Accumulation steps = {training_args.gradient_accumulation_steps}")
+    # === Training Loop (VERSIONE CORRETTA) ===
+    if accelerator.is_main_process:
+        logger.info("***** Running training *****")
+        logger.info(f"  Num examples = {len(train_dataset)}")
+        logger.info(f"  Num Epochs = {training_args.num_train_epochs}")
+        logger.info(f"  Instantaneous batch size per device = {training_args.per_device_train_batch_size}")
+        logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {training_args.train_batch_size}")
+        logger.info(f"  Gradient Accumulation steps = {training_args.gradient_accumulation_steps}")
+        logger.info(f"  Total optimization steps = {training_args.max_train_steps}")
+        logger.info(f"  Eval steps = {training_args.eval_steps}")
 
     # Resume handling
     starting_epoch = 0
     resume_step = None
     completed_steps = 0
-
+    best_model_state = None
     if training_args.resume_from_checkpoint:
         accelerator.load_state(training_args.resume_from_checkpoint)
         accelerator.print(f"Resumed from checkpoint: {training_args.resume_from_checkpoint}")
@@ -810,8 +947,10 @@ def main():
             completed_steps = resume_step
 
     progress_bar.update(completed_steps)
+
     # Training loop
     for epoch in range(starting_epoch, int(training_args.num_train_epochs)):
+        logger.info(f"||||---- Epoch {epoch + 1} ----||||")
         model.train()
         total_loss = 0 if training_args.with_tracking else None
 
@@ -820,23 +959,31 @@ def main():
                 if training_args.resume_from_checkpoint and epoch == starting_epoch and resume_step is not None
                 else train_dataloader
         )
-        for step, batch in enumerate(active_dataloader):
-            # For DeepSpeed Zero-2, we DON'T use accelerator.accumulate()
-            if training_args.debug:
-                pixel_values = batch['pixel_values']  # shape: (B, C, H, W)
-                device = pixel_values.device
 
+
+        for step, batch in enumerate(active_dataloader):
+            if accelerator.is_main_process:
+                logger.info(f"||||Step {step + 1} / {len(active_dataloader)} ||||")
+            # Training step
+            if training_args.debug:
+                pixel_values = batch['pixel_values']
+                device = pixel_values.device
                 logger.info(f"[DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device} || {completed_steps}")
-                # as it conflicts with DeepSpeed's gradient partitioning
+            # Forward pass -->
             loss = training_step(
                     model=model,
                     batch=batch,
                     accelerator=accelerator,
                     gradient_accumulation_steps=training_args.gradient_accumulation_steps
             )
+
             # Manual gradient accumulation for DeepSpeed compatibility
             if (step + 1) % training_args.gradient_accumulation_steps == 0:
+
+                safe_wait_for_everyone_simple(accelerator=accelerator)
+                # Backward pass <--
                 optimizer.step()
+
                 if lr_scheduler is not None:
                     lr_scheduler.step()
                 optimizer.zero_grad()
@@ -844,10 +991,11 @@ def main():
                 progress_bar.update(1)
                 completed_steps += 1
 
-
                 if training_args.with_tracking:
                     log_data = {
                             "train/loss": loss.item(),
+                            "epoch"     : epoch,
+                            "step"      : completed_steps,
                     }
                     if lr_scheduler is not None:
                         log_data["train/lr"] = lr_scheduler.get_last_lr()[0]
@@ -859,103 +1007,210 @@ def main():
                 if total_loss is not None:
                     total_loss += step_loss
 
-            # Checkpointing every N steps
-            if isinstance(training_args.checkpointing_steps, int):
-                if completed_steps % training_args.checkpointing_steps == 0:
-                    output_dir = os.path.join(training_args.output_dir, f"step_{completed_steps}")
-                    accelerator.save_state(output_dir)
 
-            if completed_steps >= training_args.max_train_steps:
-                break
+            # === EVALUATION DURANTE I STEPS (VERSIONE SICURA) ===
             if completed_steps % training_args.eval_steps == 0 and eval_dataloader is not None and completed_steps > 0:
-                # Evaluation
+                if accelerator.is_main_process:
+                    logger.info(f"Starting evaluation at step {completed_steps}")
+                # CRITICAL: Sincronizza PRIMA della valutazione
                 try:
-                    perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-                except Exception as e:
-                    logger.warning(f"Evaluation failed: {e}")
-                    perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
-                accelerator.log({"perplexity": perplexity, "eval_loss": eval_loss}, step=completed_steps)
+                    # Valutazione con gestione errori robusta
+                    perplexity, eval_loss = None, None
+                    try:
+                        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+
+                        if accelerator.is_main_process:
+                            logger.info(f"Evaluation completed: perplexity={perplexity}, eval_loss={eval_loss}")
+                    except Exception as eval_error:
+                        logger.error(f"Evaluation failed at step {completed_steps}: {eval_error}")
+                        perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
+
+                    # Log metrics solo se la valutazione è riuscita
+                    if perplexity is not None and training_args.with_tracking:
+                        accelerator.log({
+                                "perplexity": perplexity,
+                                "eval/loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
+                                "epoch"     : epoch,
+                                "step"      : completed_steps,
+                        }, step=completed_steps)
+
+                    if perplexity is not None and perplexity != float('inf'):
+                        if best_metric is None or best_metric > perplexity:
+                            best_metric = perplexity
+                            best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
+
+                            # Clear previous best model state to free memory
+                            if best_model_state is not None:
+                                del best_model_state
+
+                            # Get state dict and move to CPU
+                            unwrapped_model = accelerator.unwrap_model(model)
+                            best_model_state = {k: v.cpu() for k, v in unwrapped_model.state_dict().items()}
+
+                            checkpoint_info = {
+                                    "step"       : completed_steps,
+                                    "epoch"      : epoch,
+                                    "best_metric": best_metric,
+                                    "perplexity" : perplexity,
+                                    "eval_loss"  : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item()
+                            }
+
+                    safe_wait_for_everyone_simple(accelerator=accelerator)
+                    model.train()  # Assicurati che il modello sia in modalità train dopo la valutazione
+
+                except Exception as sync_error:
+                    logger.error(f"Synchronization error during evaluation: {sync_error}")
+
+        # === EVALUATION FINE EPOCA (VERSIONE SICURA) ===
+        logger.info(f"Starting end-of-epoch evaluation for epoch {epoch}")
+        # For saving later, create a temporary model:
+        if best_model_state is not None:
+            # Create temporary model for saving
+            temp_model = accelerator.unwrap_model(model)
+            temp_model.load_state_dict({k: v.cuda() for k, v in best_model_state.items()})
+
+            save_complete_checkpoint(
+                    model=temp_model,
+                    accelerator=accelerator,
+                    save_path=best_metric_checkpoint,
+                    tokenizer=tokenizer,
+                    logger=logger,
+                    additional_info=checkpoint_info
+            )
+            del temp_model  # Clean up
+
 
         try:
-            perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-        except Exception as e:
-            logger.warning(f"Evaluation failed: {e}")
-            perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
+            # Sincronizza prima della valutazione
+            safe_wait_for_everyone_simple(accelerator=accelerator)
+            # Valutazione
+            perplexity, eval_loss = None, None
+            try:
+                perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+                logger.info(f"End-of-epoch evaluation: perplexity={perplexity}, eval_loss={eval_loss}")
+            except Exception as eval_error:
+                logger.error(f"End-of-epoch evaluation failed: {eval_error}")
+                perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
 
-        if training_args.with_tracking:
+            # Log metrics
+            if training_args.with_tracking and perplexity is not None:
+                accelerator.log({
+                        "perplexity": perplexity,
+                        "eval/loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
+                        "train_loss_total": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
+                        "epoch"     : epoch,
+                        "step"      : completed_steps,
+                }, step=completed_steps)
+
+            # === CHECKPOINTING EPOCA (SOLO MAIN PROCESS) ===
+            checkpoint_save_with_sync(accelerator=accelerator)
+            try:
+                # Checkpoint periodici per epoca
+                if (training_args.checkpointing_strategy == 'epoch' and
+                        isinstance(training_args.checkpointing_divider, int)):
+                    if (epoch + 1) % training_args.checkpointing_divider == 0:
+                        save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch + 1}")
+                        # Assicurati che la directory esista
+
+                        checkpoint_save_with_sync(accelerator=accelerator,
+                                                  save_path=save_path)
+
+                        logger.info(f"Saved periodic epoch checkpoint: {save_path} -- EPOCH {epoch + 1}")
+
+            except Exception as save_error:
+                logger.error(f"Failed to save epoch checkpoint: {save_error}")
+
+            # Sincronizza dopo tutti i salvataggi
+            safe_wait_for_everyone_simple(accelerator=accelerator)
+
+        except Exception as epoch_error:
+            logger.error(f"Error during end-of-epoch processing: {epoch_error}")
+            # Continua con l'epoca successiva
+            continue
+
+
+    logger.info("Epoch Training loop completed successfully!")
+    # === EVALUATION FINALE ===
+    # logger.info("Starting final evaluation...")
+
+    # # Carica il miglior checkpoint se richiesto
+    # if training_args.load_best_model and best_metric_checkpoint and os.path.exists(best_metric_checkpoint):
+    #     try:
+    #         logger.info(f"Loading best checkpoint: {best_metric_checkpoint}")
+    #         accelerator.load_state(best_metric_checkpoint)
+    #         logger.info("Best checkpoint loaded successfully")
+    #     except Exception as load_error:
+    #         logger.error(f"Failed to load best checkpoint: {load_error}")
+
+    # Valutazione finale
+    try:
+        safe_wait_for_everyone_simple(accelerator=accelerator)
+
+        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
+        logger.info(f"Final model metrics: perplexity={perplexity}, eval_loss={eval_loss}")
+
+        if best_metric and perplexity != best_metric and perplexity != float('inf'):
+            logger.warning(
+                    f"Best metric {best_metric} does not match final metric {perplexity}."
+            )
+        if training_args.with_tracking and perplexity is not None:
             accelerator.log({
                     "perplexity": perplexity,
-                    "eval_loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
-                    "train_loss": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
+                    "eval/loss" : eval_loss if isinstance(eval_loss, (int, float)) else eval_loss.item(),
+                    "train_loss_total": total_loss / len(train_dataloader) if total_loss is not None and len(train_dataloader) > 0 else 0,
                     "epoch"     : epoch,
                     "step"      : completed_steps,
             }, step=completed_steps)
 
-        # Epoch-level checkpointing
-        if training_args.save_every_n_epochs is not None:
-            if (epoch + 1) % training_args.save_every_n_epochs == 0:
-                save_path = os.path.join(training_args.output_dir, f"epoch_every_{epoch}")
-                accelerator.save_state(save_path)
-                accelerator.print(f"Saved checkpoint every_n_epochs at: {save_path}")
+        safe_wait_for_everyone_simple(accelerator=accelerator)
 
-        if isinstance(training_args.checkpointing_steps, str) and training_args.checkpointing_steps == "epoch":
-            accelerator.save_state(os.path.join(training_args.output_dir, f"epoch_{epoch}"))
-        # Save best model
-        if best_metric is None or (perplexity != float('inf') and best_metric > perplexity):
-            best_metric = perplexity
-            best_metric_checkpoint = os.path.join(training_args.output_dir, "best_checkpoint")
-            accelerator.save_state(best_metric_checkpoint)
-            accelerator.print(f"New best metric: {best_metric} at epoch {epoch}")
-            accelerator.print(f"best_metric_checkpoint: {best_metric_checkpoint}")
-    # Reload best checkpoint
-    if training_args.load_best_model and best_metric_checkpoint:
-        accelerator.load_state(best_metric_checkpoint)
-    # Final evaluation
-    try:
-        perplexity, eval_loss = evaluate(training_args, model, eval_dataloader, accelerator)
-        logger.info(f"Final model metrics: perplexity: {perplexity} eval_loss: {eval_loss}")
-
-        if best_metric and perplexity != best_metric and perplexity != float('inf'):
-            logger.warning(
-                    f"Best metric {best_metric} does not match the metric {perplexity} of the loaded best model."
-            )
-    except Exception as e:
-        logger.error(f"Final evaluation failed: {e}")
+    except Exception as final_eval_error:
+        logger.error(f"Final evaluation failed: {final_eval_error}")
         perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
-
-    # Save final model and tokenizer
+    # === SALVATAGGIO FINALE ===
     if training_args.output_dir is not None:
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
         try:
+            safe_wait_for_everyone_simple(accelerator=accelerator)
+
+            # Salva modello finale
+            unwrapped_model = accelerator.unwrap_model(model)
             unwrapped_model.save_pretrained(
                     training_args.output_dir,
                     is_main_process=accelerator.is_main_process,
                     save_function=accelerator.save,
                     state_dict=accelerator.get_state_dict(model),
             )
+
+            # Salva tokenizer (solo main process)
             if accelerator.is_main_process and tokenizer is not None:
                 tokenizer.save_pretrained(training_args.output_dir)
 
-            # Save results
-            results = {
-                    "perplexity": perplexity if perplexity != float('inf') else "inf",
-                    "eval_loss" : eval_loss.item() if hasattr(eval_loss, 'item') else eval_loss
-            }
-            with open(os.path.join(training_args.output_dir, "all_results.json"), "w") as f:
-                json.dump(results, f)
+                # Salva risultati finali
+                results = {
+                        "perplexity" : perplexity if perplexity != float('inf') else "inf",
+                        "eval/loss"  : eval_loss.item() if hasattr(eval_loss, 'item') else eval_loss,
+                        "best_metric": best_metric if best_metric is not None else "not_computed"
+                }
+                results_path = os.path.join(training_args.output_dir, "all_results.json")
+                with open(results_path, "w") as f:
+                    json.dump(results, f, indent=2)
 
-            print("✅ Model and results saved successfully")
-        except Exception as e:
-            logger.error(f"Error saving model: {e}")
+                logger.info(f"Results saved to: {results_path}")
+
+            logger.info("✅ Model and results saved successfully")
+
+        except Exception as save_error:
+            logger.error(f"Error saving final model: {save_error}")
 
     # End tracking
     if training_args.with_tracking:
-        accelerator.end_training()
+        try:
+            accelerator.end_training()
+        except Exception as tracking_error:
+            logger.error(f"Error ending tracking: {tracking_error}")
 
-    print("🎉 Training completed successfully!")
+    logger.info("🎉 Training completed successfully!")
     logger.info("|/| May the force be with you! Training completed successfully.")
-
 
 if __name__ == "__main__":
     main()

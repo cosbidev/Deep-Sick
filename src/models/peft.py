@@ -260,7 +260,18 @@ class DeepSpeedCompatibleModelParameterManager:
             print(f"❌ Error applying LoRA: {e}")
             raise
 
-        # Step 5: Verify the model state
+
+        # Unfreeze specific layers if needed
+        if kwargs.get("layer_to_unfreeze", []):
+            print(f"🔓 Unfreezing layers: {kwargs['layer_to_unfreeze']}")
+            layer_to_unfreeze = kwargs["layer_to_unfreeze"]
+            for name, param in model.named_parameters():
+                # Sblocca solo se il nome contiene uno dei pattern indicati
+                if any(keyword in name for keyword in layer_to_unfreeze):
+                    param.requires_grad = True
+                    print(f"🔓 Unfrozen: {name}")
+
+        # Verify trainable parameters again after unfreezing
         trainable_params = self.verify_trainable_parameters(model)
 
         # Step 6: Print trainable parameters summary
