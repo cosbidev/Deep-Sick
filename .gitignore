@@ -35,3 +35,5 @@ bash/.DS_Store
 /data/mimic-nle/query/test-query.json
 /data/mimic-nle/query/train-query.json
 /activateEnv.sh
+/src/preprocess/mimic-cxr/radiology-report-extraction/
+/src/preprocess/mimic-cxr/mimic-cxr/
