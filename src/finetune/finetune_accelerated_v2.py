@@ -958,10 +958,10 @@ def main():
                 else train_dataloader
         )
 
-
+        active_dataloader.sampler.set_epoch(epoch)
         for step, batch in enumerate(active_dataloader):
             if accelerator.is_main_process:
-                logger.info(f"||||Step {step + 1} / {len(active_dataloader)} ||||")
+                logger.info(f"||||Step {step + 1} / {len(active_dataloader)} |||| [DEBUG] PIXEL_VALUES shape: {pixel_values.shape} on device: {device} || {completed_steps}")
             # Training step
             if training_args.debug:
                 pixel_values = batch['pixel_values']
