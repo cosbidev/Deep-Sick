@@ -86,7 +86,6 @@ export OUTPUT_DIR="./reports/finetune_gemma_findings_zero3_trainer_lora64_vanill
 
 mkdir -p "$OUTPUT_DIR"  # Assicurati che la directory di output esista
 
-
 export BATCH=4
 export EPOCHS=4
 export EVAL_STEPS=64  # Riduci evaluation steps per testare più spesso

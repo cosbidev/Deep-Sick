@@ -1,7 +1,7 @@
 import math
 import os
 
-from easydict import EasyDict
+
 import torch
 import numpy as np
 import random
@@ -1222,8 +1222,8 @@ def demonstrate_strategy_switching(dataset):
         strategy_type = "PRIMARY" if count_2img == 3 else "FALLBACK"
         print(f"  Batch {i}: {count_2img}×2img + {count_1img}×1img = {total_images} images ({strategy_type})")
 
-
 if __name__ == "__main__":
+    from easydict import EasyDict
     print("🎯 ADAPTIVE BLUEPRINTGROUPEDSAMPLER DEMONSTRATION")
     print("=" * 80)
     print("Key Feature: FIXED image count per batch with adaptive strategy switching")
