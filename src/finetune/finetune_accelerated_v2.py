@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Optional, Any, Callable
 
 from accelerate import Accelerator
+from peft import PeftModel
 from tqdm import tqdm
 import os
 import json
@@ -30,6 +31,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 from transformers import get_scheduler
 from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
 from transformers.trainer_pt_utils import get_parameter_names
+from transformers.utils import is_sagemaker_mp_enabled
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -299,56 +301,54 @@ def create_optimizers_with_parameter_groups(model, training_args, accelerator):
     return optimizer, lr_scheduler
 
 
-def save_complete_checkpoint(
-        model, accelerator,
-        save_path, tokenizer=None, logger=None,
-        additional_info=None
-        ):
-    """
-    Save complete checkpoint: model + optimizer + scheduler + tokenizer
-    Fast and distributed-training safe
-    """
-
-    if accelerator.is_main_process:
-        # Create save directory
-        os.makedirs(save_path, exist_ok=True)
-        logger.info(f"💾 Saving complete checkpoint to: {save_path}")
-
-
-        model.save_pretrained(
-                save_path,
-                is_main_process=accelerator.is_main_process,
-                save_function=accelerator.save,
-                state_dict=accelerator.get_state_dict(model),
-                safe_serialization=True  # Use safetensors (faster & safer)
-        )
-
-        # 4. Save Tokenizer
-        if tokenizer is not None:
-            tokenizer.save_pretrained(save_path)
-
-        # 5. Save Training Info (step, epoch, metrics, etc.)
-        training_info = {
-                "step"         : additional_info.get("step", 0) if additional_info else 0,
-                "epoch"        : additional_info.get("epoch", 0) if additional_info else 0,
-                "best_metric"  : additional_info.get("best_metric") if additional_info else None,
-                "training_args": additional_info.get("training_args") if additional_info else None
-        }
-
-        with open(os.path.join(save_path, "training_info.json"), "w") as f:
-            json.dump(training_info, f, indent=2, default=str)
-
-        if logger:
-            logger.info(f"✅ Complete checkpoint saved successfully")
-            logger.info(f"   📁 Directory: {save_path}")
-            logger.info(f"   🏗️  Model: ✓")
-            logger.info(f"   🔤 Tokenizer: {'✓' if tokenizer else '✗'}")
-
-    # Synchronize all processes
-    accelerator.wait_for_everyone()
-    return True
-
-
+# def save_complete_checkpoint(
+#         model, accelerator,
+#         save_path, tokenizer=None, logger=None,
+#         additional_info=None
+#         ):
+#     """
+#     Save complete checkpoint: model + optimizer + scheduler + tokenizer
+#     Fast and distributed-training safe
+#     """
+#
+#     if accelerator.is_main_process:
+#         # Create save directory
+#         os.makedirs(save_path, exist_ok=True)
+#         logger.info(f"💾 Saving complete checkpoint to: {save_path}")
+#
+#
+#         model.save_pretrained(
+#                 save_path,
+#                 is_main_process=accelerator.is_main_process,
+#                 save_function=accelerator.save,
+#                 state_dict=accelerator.get_state_dict(model),
+#                 safe_serialization=True  # Use safetensors (faster & safer)
+#         )
+#
+#         # 4. Save Tokenizer
+#         if tokenizer is not None:
+#             tokenizer.save_pretrained(save_path)
+#
+#         # 5. Save Training Info (step, epoch, metrics, etc.)
+#         training_info = {
+#                 "step"         : additional_info.get("step", 0) if additional_info else 0,
+#                 "epoch"        : additional_info.get("epoch", 0) if additional_info else 0,
+#                 "best_metric"  : additional_info.get("best_metric") if additional_info else None,
+#                 "training_args": additional_info.get("training_args") if additional_info else None
+#         }
+#
+#         with open(os.path.join(save_path, "training_info.json"), "w") as f:
+#             json.dump(training_info, f, indent=2, default=str)
+#
+#         if logger:
+#             logger.info(f"✅ Complete checkpoint saved successfully")
+#             logger.info(f"   📁 Directory: {save_path}")
+#             logger.info(f"   🏗️  Model: ✓")
+#             logger.info(f"   🔤 Tokenizer: {'✓' if tokenizer else '✗'}")
+#
+#     # Synchronize all processes
+#     accelerator.wait_for_everyone()
+#     return True
 
 
 def training_step(
@@ -854,9 +854,8 @@ def train():
                                 del best_model_state
 
                             # Get state dict and move to CPU
-                            unwrapped_model = accelerator.unwrap_model(model)
-                            best_model_state = {k: v.cpu() for k, v in unwrapped_model.state_dict().items()}
-
+                            unwrapped_model_best = accelerator.unwrap_model(model)
+                            best_model_state = {k: v.cpu() for k, v in unwrapped_model_best.state_dict().items()}
                             checkpoint_info = {
                                     "step"       : completed_steps,
                                     "epoch"      : epoch,
@@ -885,18 +884,30 @@ def train():
         # For saving later, create a temporary model:
         if best_model_state is not None:
             # Create temporary model for saving
-            temp_model = accelerator.unwrap_model(model)
-            temp_model.load_state_dict({k: v.cuda() for k, v in best_model_state.items()})
+            safe_wait_for_everyone_simple(accelerator=accelerator)
 
-            save_complete_checkpoint(
-                    model=temp_model,
-                    accelerator=accelerator,
-                    save_path=best_metric_checkpoint,
-                    tokenizer=tokenizer,
-                    logger=logger,
-                    additional_info=checkpoint_info
+            #
+            # non_lora_weights = get_peft_state_non_lora_maybe_zero_3(model.named_parameters(), require_grad_only=False)
+            # torch.save(non_lora_weights, os.path.join(output_dir, "non_lora_state_dict.bin"))
+
+            unwrapped_model_best.save_pretrained(
+                    training_args.output_dir,
+                    is_main_process=accelerator.is_main_process,
+                    save_function=accelerator.save,
+                    state_dict=best_model_state,  # full parameters
             )
-            del temp_model  # Clean up
+            # Salva tokenizer (solo main process)
+            if accelerator.is_main_process and tokenizer is not None:
+                tokenizer.save_pretrained(training_args.output_dir)
+
+                results_path = os.path.join(training_args.output_dir, "all_results.json")
+                with open(results_path, "w") as f:
+                    json.dump(checkpoint_info, f, indent=2)
+
+                logger.info(f"Results saved to: {results_path}")
+
+            logger.info("✅ Model and results saved successfully")
+
         try:
             # Sincronizza prima della valutazione
             safe_wait_for_everyone_simple(accelerator=accelerator)
@@ -968,40 +979,6 @@ def train():
     except Exception as final_eval_error:
         logger.error(f"Final evaluation failed: {final_eval_error}")
         perplexity, eval_loss = float('inf'), torch.tensor(float('inf'))
-    # === SALVATAGGIO FINALE ===
-    if training_args.output_dir is not None:
-        try:
-            safe_wait_for_everyone_simple(accelerator=accelerator)
-
-            # Salva modello finale
-            unwrapped_model = accelerator.unwrap_model(model)
-            unwrapped_model.save_pretrained(
-                    training_args.output_dir,
-                    is_main_process=accelerator.is_main_process,
-                    save_function=accelerator.save,
-                    state_dict=accelerator.get_state_dict(model),
-            )
-
-            # Salva tokenizer (solo main process)
-            if accelerator.is_main_process and tokenizer is not None:
-                tokenizer.save_pretrained(training_args.output_dir)
-
-                # Salva risultati finali
-                results = {
-                        "perplexity" : perplexity if perplexity != float('inf') else "inf",
-                        "eval/loss"  : eval_loss.item() if hasattr(eval_loss, 'item') else eval_loss,
-                        "best_metric": best_metric if best_metric is not None else "not_computed"
-                }
-                results_path = os.path.join(training_args.output_dir, "all_results.json")
-                with open(results_path, "w") as f:
-                    json.dump(results, f, indent=2)
-
-                logger.info(f"Results saved to: {results_path}")
-
-            logger.info("✅ Model and results saved successfully")
-
-        except Exception as save_error:
-            logger.error(f"Error saving final model: {save_error}")
 
     # End tracking
     if training_args.with_tracking:
