@@ -10,7 +10,7 @@ from accelerate import Accelerator
 from accelerate.utils import gather_object
 #from f1chexbert import F1CheXbert
 from transformers import HfArgumentParser, AutoConfig, AutoModelForCausalLM, AutoProcessor
-
+from peft import PeftModel
 from src.models import GemmaInference
 
 # Environment setup
@@ -179,27 +179,28 @@ def test():
     print("🔄 Setting up collator...")
 
     processor = AutoProcessor.from_pretrained(model_args.model_name_or_path,
-                                              use_fast=True,
-                                              max_length=test_args.model_max_length,
-                                              padding="max_length",
-                                              truncation=True,
                                               )
 
+    model = PeftModel.from_pretrained(
+        model,
+        model_args.model_name_or_path,   # directory where adapter is saved
+    )
 
     from safetensors.torch import load_file
     # 2. Load safetensors weights
-    state_dict = load_file("/mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick/reports/finetune_gemma_findings_zero3lora64_alpha64_vanilla/epoch_every_3/model.safetensors")
-    state_dict = {k.replace('base_model.model.', ''):v for k, v in state_dict.items()}
+    #state_dict = load_file("/mimer/NOBACKUP/groups/naiss2023-6-336/Deep-Sick/reports/finetune_gemma_findings_lora_llm_projlora64_alpha64_vanilla/epoch_1/model.safetensors")
+    #state_dict = {k:v for k, v in state_dict.items()}
 
-    missing, unexpected = model.load_state_dict(state_dict, strict=False)
+    #missing, unexpected = model.load_state_dict(state_dict, strict=False)
+
 
     processor.tokenizer.pad_token = processor.tokenizer.eos_token
-    processor.tokenizer.padding_side = "right"
+    processor.tokenizer.padding_side = "left"
 
 
     print("✅ Model loaded successfully.")
     # load the model
-    model = GemmaInference(device=f"cuda:X{accelerator.process_index}",
+    model = GemmaInference(device=f"cuda:{accelerator.process_index}",
                            test_args=test_args,
                            model_instance=model,
                            processor=processor,
@@ -229,10 +230,9 @@ def test():
             text = model.generate(
                     os.path.join(data_path, dataset_name, sample["key_image_path"].replace(list(to_be_replaced[dataset_name].keys())[0],list(to_be_replaced[dataset_name].values())[0])),
                     f'Evaluate the chest X-rays',
-                    num_beams=test_args.num_beams,
-                    temperature=test_args.temperature,
-                    top_p=test_args.top_p,
-                    max_new_tokens=test_args.max_new_tokens,
+                    num_beams=3,
+                    temperature=0.5,
+                    max_new_tokens=1500,
             )
 
 
@@ -254,6 +254,7 @@ def test():
             save_path = f'{save_dir}/predictions/Findings Generation/{model}.json'
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             json.dump(to_save, open(save_path, "wt"), ensure_ascii=False, indent=2)
+
 
 
 def compute_scores():

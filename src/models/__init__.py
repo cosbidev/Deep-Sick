@@ -1,6 +1,7 @@
 from .VisionLanguage import VisionLanguageDataCollator
 from .Qwen2_5VL import Qwen25VLCollator, Qwen25VLModel
 from .Gemma3 import GemmaCollator, GemmaInference
+from .sft_trainer import GemmaSFTTrainer
 from .peft import DeepSpeedCompatibleModelParameterManager
 import torch
 from transformers import AutoModelForCausalLM, AutoConfig

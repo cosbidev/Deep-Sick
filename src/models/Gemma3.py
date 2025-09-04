@@ -1,7 +1,8 @@
 import io
 import os
 import random
-from typing import Any, Dict, List, re
+import re
+from typing import Any, Dict, List
 
 import PIL
 import torch
@@ -20,6 +21,11 @@ from src.constants import (
     VISION_START_TOKEN,
     VISION_END_TOKEN, LLAVA_IMAGE_TOKEN, DEFAULT_IMAGE_TOKEN
 )
+
+
+
+
+
 
 class GemmaCollator(VisionLanguageDataCollator):
     """
@@ -481,6 +487,7 @@ class GemmaInference(object):
         self.processor = processor
 
         self.model = model_instance.to(self.dtype)
+        self.model.to(self.device)
         self.model.eval()
 
 

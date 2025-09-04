@@ -39,6 +39,7 @@ import sys
 sys.path.extend(["./src", './'])
 
 from src.finetune.monkey_patch_forward import replace_gemma3_forward
+from src.models import GemmaSFTTrainer
 from src.params import ModelArguments, DataArguments, CustomTrainingArguments
 
 from src.dataset import load_parquet_image_dataset
@@ -745,7 +746,6 @@ def train():
         accelerator.load_state(training_args.resume_from_checkpoint)
         path = os.path.basename(training_args.resume_from_checkpoint)
         training_difference = path.split("_")[-1]  # Extract the last part after the last hyphen
-
         starting_epoch = int(training_difference)
         resume_step = None
         completed_steps = (starting_epoch * num_update_steps_per_epoch) + 1
@@ -885,27 +885,31 @@ def train():
         if best_model_state is not None:
             # Create temporary model for saving
             safe_wait_for_everyone_simple(accelerator=accelerator)
+            best_model_dir = os.path.join(training_args.output_dir, "best_checkpoint")
+            os.makedirs(best_model_dir, exist_ok=True)
 
             #
             # non_lora_weights = get_peft_state_non_lora_maybe_zero_3(model.named_parameters(), require_grad_only=False)
             # torch.save(non_lora_weights, os.path.join(output_dir, "non_lora_state_dict.bin"))
+            merged_model = unwrapped_model_best.merge_and_unload()
 
-            unwrapped_model_best.save_pretrained(
-                    training_args.output_dir,
-                    is_main_process=accelerator.is_main_process,
-                    save_function=accelerator.save,
-                    state_dict=best_model_state,  # full parameters
-            )
-            # Salva tokenizer (solo main process)
-            if accelerator.is_main_process and tokenizer is not None:
-                tokenizer.save_pretrained(training_args.output_dir)
 
-                results_path = os.path.join(training_args.output_dir, "all_results.json")
+            if accelerator.is_main_process:
+                merged_model.save_pretrained(
+                        best_model_dir,
+                        save_function=accelerator.save
+                )
+
+                # Save tokenizer
+                if tokenizer is not None:
+                    tokenizer.save_pretrained(best_model_dir)
+
+                # Save results
+                results_path = os.path.join(best_model_dir, "all_results.json")
                 with open(results_path, "w") as f:
                     json.dump(checkpoint_info, f, indent=2)
 
                 logger.info(f"Results saved to: {results_path}")
-
             logger.info("✅ Model and results saved successfully")
 
         try:
