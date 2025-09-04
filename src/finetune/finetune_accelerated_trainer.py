@@ -105,7 +105,7 @@ def set_requires_grad(parameters, requires_grad):
 
 def configure_vision_tower(model, training_args, compute_dtype, device):
     vision_tower = model.vision_tower
-    #vision_tower.to(dtype=compute_dtype, device=device)
+    vision_tower.to(dtype=compute_dtype, device=device)
 
     img_projection_params = model.multi_modal_projector.parameters()
     set_requires_grad(img_projection_params, not training_args.freeze_projector)
@@ -113,8 +113,8 @@ def configure_vision_tower(model, training_args, compute_dtype, device):
     vision_model_params = vision_tower.parameters()
     set_requires_grad(vision_model_params, not training_args.freeze_vision_tower)
 
-    # if training_args.bits in [4, 8]:
-    #     model.model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=device)
+    if training_args.bits in [4, 8]:
+        model.model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=device)
 
 
 def configure_llm(model, training_args):
@@ -322,6 +322,7 @@ def train():
             model=model,
             processing_class=processor,
             args=training_args,
+
             **dict(train_dataset=train_dataset,
                 eval_dataset=eval_dataset,
                 data_collator=collator)

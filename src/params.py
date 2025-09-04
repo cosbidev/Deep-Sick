@@ -67,7 +67,7 @@ class CustomTrainingArguments:
     disable_flash_attn2: bool = field(default=False)
 
     # Basic training arguments
-    deepspeed_config_file: str = field(default="./configs/deepspeed_zero2.json", metadata={"help": "Path to the DeepSpeed Zero-2 configuration file."})
+    deepspeed_config_file: str = field(default="deepspeed/zero3.json", metadata={"help": "Path to the DeepSpeed Zero-2 configuration file."})
     output_dir: str = field(default="./results", metadata={"help": "Output directory for model predictions and checkpoints."})
     num_train_epochs: float = field(default=3.0, metadata={"help": "Total number of training epochs to perform."})
     per_device_train_batch_size: int = field(default=8, metadata={"help": "Batch size per GPU/TPU core/CPU for training."})
@@ -192,11 +192,11 @@ class TrainingArguments(TrainingArguments):
 
     # Model configuration
     model_max_length: int = field(
-            default=131072,
+            default=2048,
             metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
     )
-
-    attn_implementation: str = field(default="flash_attention_2", metadata={"help": "Use transformers attention implementation."})
+    remove_unused_columns: bool = field(default=False, metadata={"help": "Whether to remove unused columns."})
+    attn_implementation: str = field(default="eager", metadata={"help": "Use transformers attention implementation."})
 
     # LoRA/PEFT configuration
     lora_enable: bool = field(default=False, metadata={"help": "Whether to enable LoRA training."})
@@ -250,9 +250,7 @@ class TrainingArguments(TrainingArguments):
     cycle_min_lr: float = field(default=1e-7, metadata={"help": "Minimum learning rate for cyclical learning rate scheduler."})
     total_num_steps: Optional[int] = field( default=None, metadata={"help": "Total number of steps for the learning rate scheduler."})
     warmup_ratio: float = field(default=0.01, metadata={"help": "Warmup ratio for the learning rate scheduler."})
-
-
-
+    dataloader_num_workers: int = field(default=0, metadata={"help": "Number of subprocesses to use for data loading. 0 means that the data will be loaded in the main process."})
     # Multimodal training configuration
     finetune_vision_layers: bool = field(default=False, metadata={"help": "Whether to finetune the vision layers."})
     finetune_language_layers: bool = field(default=True, metadata={"help": "Whether to finetune the language layers."})
@@ -275,7 +273,5 @@ class TrainingArguments(TrainingArguments):
     report_to: str = field(default="wandb")
     with_tracking: bool = field(default=True, metadata={"help": "Whether to use tracking for the training run."})
     lr: float = field(default=2e-4, metadata={"help": "Learning rate for the optimizer."})
-    debug: bool = field(default=False, metadata={"help": "Whether to run in debug mode with fewer epochs and smaller batch size."})
-
-
     # liger-kernel
+

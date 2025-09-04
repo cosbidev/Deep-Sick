@@ -12,16 +12,44 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ruffin02@outlook.it
 
-
 set -euo pipefail
-# =============================================================================
+
+
 echo "=== Gemma3 Multi-Node Training (Direct SLURM Method) ==="
 echo "Job ID: $SLURM_JOB_ID"
 echo "Nodes: $SLURM_JOB_NODELIST"
 
+
 # Show all available interfaces
 echo "Available network interfaces:"
 ip addr show | grep -E "^[0-9]+:" | awk '{print "  " $2}' | sed 's/://'
+
+echo "=== Alvis Network Configuration ==="
+echo "Node: $(hostname)"
+echo "Available interfaces:"
+ip addr show | grep -E "^[0-9]+:" | awk '{print "  " $2}' | sed 's/://'
+
+export NETWORK_INTERFACE="ens27f0np0"
+
+# Verify it exists and has IP
+if ip addr show "$NETWORK_INTERFACE" 2>/dev/null | grep -q "inet "; then
+    echo "✅ Interface $NETWORK_INTERFACE is configured and ready"
+    INTERFACE_IP=$(ip addr show "$NETWORK_INTERFACE" | grep "inet " | head -1 | awk '{print $2}' | cut -d'/' -f1)
+    echo "Interface IP: $INTERFACE_IP"
+else
+    echo "⚠️  $NETWORK_INTERFACE has no IP, checking VLAN interfaces..."
+
+    # Try VLAN interfaces
+    for vlan_if in ens27f0np0.1044 ens27f0np0.1043; do
+        if ip addr show "$vlan_if" 2>/dev/null | grep -q "inet "; then
+            NETWORK_INTERFACE="$vlan_if"
+            echo "✅ Using VLAN interface: $NETWORK_INTERFACE"
+            INTERFACE_IP=$(ip addr show "$NETWORK_INTERFACE" | grep "inet " | head -1 | awk '{print $2}' | cut -d'/' -f1)
+            echo "Interface IP: $INTERFACE_IP"
+            break
+        fi
+    done
+fi
 
 # =============================================================================
 # NETWORK ENVIRONMENT CONFIGURATION
@@ -36,6 +64,7 @@ echo "✓ Environment activated"
 MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 MASTER_PORT=$((30000 + RANDOM % 10000))
 
+
 NODES=$SLURM_NNODES
 TASKS_PER_NODE=$SLURM_NTASKS_PER_NODE
 WORLD_SIZE=$((NODES * TASKS_PER_NODE))
@@ -46,7 +75,7 @@ echo "MASTER_ADDR=$MASTER_ADDR"
 echo "MASTER_PORT=$MASTER_PORT"
 echo "WORLD_SIZE=$WORLD_SIZE"
 # Configure NCCL with detected interface
-export NCCL_SOCKET_IFNAME=ib0
+export NCCL_SOCKET_IFNAME="$NETWORK_INTERFACE"
 export NCCL_IB_DISABLE=0
 # TORCH
 export TORCH_DISTRIBUTED_DEBUG=INFO
