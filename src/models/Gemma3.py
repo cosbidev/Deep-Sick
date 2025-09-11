@@ -46,8 +46,6 @@ class GemmaCollator(VisionLanguageDataCollator):
             **kwargs: Any
     ):
 
-
-
         self.image_tkn = image_tkn
         self.user_token = "user"
         self.assistant_token = "model"
@@ -532,7 +530,7 @@ class GemmaInference(object):
                 input_ids,
                 do_sample=False,
                 num_beams=num_beams,
-                temperature=1.0,
+                temperature=temperature,
                 top_p=top_p,
                 use_cache=True,
                 max_new_tokens=max_new_tokens

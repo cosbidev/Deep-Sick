@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node=1          # one task per GPU
 #SBATCH --gpus-per-node=A40:4         # 4 GPUs per node
 #SBATCH --cpus-per-task=16
-#SBATCH -t 0-02:00:00
+#SBATCH -t 0-24:00:00
 #SBATCH -J "accelerate_test_trainer"
 #SBATCH --error=trainer_TRAIN_%J.err
 #SBATCH --output=trainer_TRAIN_%J.out
@@ -61,13 +61,13 @@ echo "✓ Environment activated"
 MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 MASTER_PORT=6000
 NNODES=$SLURM_NNODES
-WORLD_SIZE=$((SLURM_NNODES * SLURM_GPUS_ON_NODE))
-GPUS_PER_NODE=$SLURM_GPUS_ON_NODE
+GPUS_PER_NODE=4
+WORLD_SIZE=$(($NNODES * $GPUS_PER_NODE))
+
 export MASTER_ADDR MASTER_PORT NNODES WORLD_SIZE
 export NODE_RANK=$SLURM_NODEID
 export LOCAL_RANK=$SLURM_LOCALID
 export RANK=$SLURM_PROCID
-
 
 # NCCL
 export NCCL_SOCKET_IFNAME="$NETWORK_INTERFACE"
@@ -80,10 +80,10 @@ OUTPUT_DIR="./reports/finetune_gemma_findings_accelerate_zero3_debug_trainer"
 mkdir -p "$OUTPUT_DIR"
 
 # Training hyperparams
-BATCH=8
+BATCH=4
 EPOCHS=1
-EVAL_STEPS=256
-GRADIENT_ACCUMULATION_STEPS=1
+EVAL_STEPS=32
+GRADIENT_ACCUMULATION_STEPS=2
 
 echo "MASTER_ADDR=$MASTER_ADDR"
 echo "MASTER_PORT=$MASTER_PORT"
@@ -92,6 +92,7 @@ echo "WORLD_SIZE=$WORLD_SIZE"
 echo "NODE_RANK=$NODE_RANK"
 echo "LOCAL_RANK=$LOCAL_RANK"
 
+export WANDB_MODE=online
 # Launch with srun (1 proc per GPU)
 srun accelerate launch \
     --num_processes $WORLD_SIZE \
@@ -132,16 +133,23 @@ srun accelerate launch \
     --logging_steps 1 \
     --tf32 True \
     --gradient_checkpointing True \
-    --report_to tensorboard \
+    --report_to wandb \
+    --run_name "gemma3_(lora)freeze_llm_freeze_vision_tower_debug_{$SLURM_JOB_ID}" \
     --lazy_preprocess True \
     --dataloader_num_workers 0 \
-    --save_steps 1000 \
+    --model_max_length 2048 \
+    --do_eval True \
+    --metric_for_best_model "eval_loss" \
+    --save_strategy "steps" \
+    --eval_strategy "steps" \
+    --save_steps 2048 \
     --eval_steps $EVAL_STEPS \
-    --save_total_limit 5 \
-    --model_max_length 2048
-
+    --save_total_limit 3 \
+    --load_best_model_at_end True \
+    --greater_is_better False \
+    --label_names labels \
+    --data_debug True \
 
 echo "END TIME: $(date)"
-
 
 

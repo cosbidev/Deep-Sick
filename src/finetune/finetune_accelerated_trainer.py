@@ -53,6 +53,8 @@ os.environ["HF_DATASETS_CACHE"] = cache_dir
 os.environ["HF_HOME"] = cache_dir
 os.environ["HUGGINGFACE_HUB_CACHE"] = cache_dir
 os.environ["HF_HUB_CACHE"] = cache_dir
+os.environ["WANDB_PROJECT"] = "VLM-DAFT"  # name your W&B project
+
 CACHE_DIR = os.path.join(os.getcwd(), "hf_models_cache")
 
 logger = logging.getLogger(__name__)
@@ -184,10 +186,10 @@ def setup_model_and_config(model_args, training_args, device, compute_dtype=torc
 
         print(f"✅ LoRA applied successfully with {len(trainable_params)} trainable parameter groups")
 
-    try:
-        model.config.hidden_size = model.model.language_model.embed_tokens.embedding_dim
-    except:
-        model.config.hidden_size = 2560
+    # try:
+    #     model.config.hidden_size = model.model.language_model.embed_tokens.embedding_dim
+    # except:
+    #     model.config.hidden_size = 2560
 
     return model
 
@@ -207,6 +209,7 @@ def train():
     rank0_print(f"training_args: {training_args}")
 
 
+
     if training_args.use_liger:
         apply_liger_kernel_to_gemma3_text(
             rope=True, cross_entropy=False, fused_linear_cross_entropy=False, rms_norm=True, geglu=True
@@ -218,9 +221,6 @@ def train():
 
     # Replace GEMMA3 forward method if using Liger
     #replace_gemma3_forward(use_liger=training_args.use_liger)
-
-    training_args.output_dir += "lora" + str(training_args.lora_r) + "_alpha" + str(training_args.lora_alpha) if training_args.lora_enable else ""
-    training_args.output_dir += f"_{training_args.loss_function}" if training_args.loss_function != "default" else "_vanilla"
 
     os.makedirs(training_args.output_dir, exist_ok=True)
 
@@ -271,6 +271,10 @@ def train():
     # Load datasets
     rank0_print("🔄 Loading datasets...")
     train_dataset, eval_dataset = load_and_prepare_datasets(data_args)
+
+    if data_args.data_debug:
+        train_dataset = train_dataset.select(range(0, 2000))
+        eval_dataset = eval_dataset.select(range(0, 400))
     rank0_print("✅ Datasets loaded successfully")
 
 

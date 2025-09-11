@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Union
 import os
 
 from transformers import TrainingArguments
+from transformers.trainer_utils import SaveStrategy, IntervalStrategy
 
 cache_dir = os.path.join(os.getcwd(), "hf_cache")
 os.environ["HF_DATASETS_CACHE"] = cache_dir
@@ -48,7 +49,6 @@ class DataArguments:
             metadata={"help": "The number of processes to use for the preprocessing."}
     )
     cache_dir: Optional[str] = field(default=CACHE_DIR, metadata={"help": "Path to a directory where the model will be cached."})
-
 
 
 
@@ -268,10 +268,77 @@ class TrainingArguments(TrainingArguments):
 
     # Evaluation and best model
     load_best_model: bool = field(default=True, metadata={"help": "Whether to load the best model at the end of training."})
-    eval_steps: int = field(default=None, metadata={"help": "Evaluate every n steps."})
+
     # W&B integration
     report_to: str = field(default="wandb")
     with_tracking: bool = field(default=True, metadata={"help": "Whether to use tracking for the training run."})
     lr: float = field(default=2e-4, metadata={"help": "Learning rate for the optimizer."})
-    # liger-kernel
 
+    save_strategy: Union[SaveStrategy, str] = field(
+        default="steps",
+        metadata={"help": "The checkpoint save strategy to use."},
+    )
+    save_steps: float = field(
+        default=500,
+        metadata={
+            "help": (
+                "Save checkpoint every X updates steps. Should be an integer or a float in range `[0,1)`. "
+                "If smaller than 1, will be interpreted as ratio of total training steps."
+            )
+        },
+    )
+    eval_strategy: Union[IntervalStrategy, str] = field(
+        default="steps",
+        metadata={"help": "The evaluation strategy to use."},
+    )
+    eval_steps: Optional[float] = field(
+            default=None,
+            metadata={
+                    "help": (
+                            "Run an evaluation every X steps. Should be an integer or a float in range `[0,1)`. "
+                            "If smaller than 1, will be interpreted as ratio of total training steps."
+                    )
+            },
+    )
+
+    metric_for_best_model: Optional[str] = field(
+        default=None, metadata={"help": "The metric to use to compare two different models."}
+    )
+    save_total_limit: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": (
+                "If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in"
+                " `output_dir`. When `load_best_model_at_end` is enabled, the 'best' checkpoint according to"
+                " `metric_for_best_model` will always be retained in addition to the most recent ones. For example,"
+                " for `save_total_limit=5` and `load_best_model_at_end=True`, the four last checkpoints will always be"
+                " retained alongside the best model. When `save_total_limit=1` and `load_best_model_at_end=True`,"
+                " it is possible that two checkpoints are saved: the last one and the best one (if they are different)."
+                " Default is unlimited checkpoints"
+            )
+        },
+    )
+    greater_is_better : bool = field(
+        default=False, metadata={"help": "Whether the `metric_for_best_model` should be maximized or not."}
+    )
+    load_best_model_at_end: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": (
+                "Whether or not to load the best model found during training at the end of training. When this option"
+                " is enabled, the best checkpoint will always be saved. See `save_total_limit` for more."
+            )
+        },
+    )
+    # liger-kernel
+    run_name: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "An optional descriptor for the run. Notably used for wandb, mlflow comet and swanlab logging."
+        },
+    )
+
+    label_names: Optional[list[str]] = field(
+        default_factory=list,
+        metadata={"help": "The list of keys in your dictionary of inputs that correspond to the labels."}
+    )
